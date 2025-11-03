@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beacon-python"
+version = "2.0.0"
+description = "A Python library for experiment tracking and hyperparameter optimization"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "beacon contributors"}
+]
+keywords = ["machine learning", "experiment tracking", "hyperparameter optimization"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "pyyaml>=6.0",
+    "toml>=0.10.2",
+    "sqlalchemy>=2.0",
+    "numpy>=1.19.0"
+]
+
+[project.optional-dependencies]
+distributed = ["torch>=1.8.0"]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/beacon"
+Repository = "https://github.com/yourusername/beacon"
+Documentation = "https://github.com/yourusername/beacon#readme"
+Issues = "https://github.com/yourusername/beacon/issues"
+
+[tool.setuptools.packages.find]
+include = ["beacon*"]
