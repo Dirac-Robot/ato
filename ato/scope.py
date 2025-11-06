@@ -8,10 +8,10 @@ import warnings
 from contextlib import contextmanager
 from functools import wraps
 
-from beacon.adict import ADict
+from ato.adict import ADict
 from inspect import currentframe, getframeinfo
 
-from beacon.parser import parse_command
+from ato.parser import parse_command
 
 
 # safe compile

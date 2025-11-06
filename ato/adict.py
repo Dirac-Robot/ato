@@ -14,7 +14,7 @@ from functools import wraps
 from types import MappingProxyType
 from typing import Mapping, MutableMapping, Callable
 
-from beacon import xyz
+from ato import xyz
 
 ALLOWED_EXTS = ('.yaml', '.yml', '.json', '.toml', '.xyz')
 
@@ -335,7 +335,7 @@ class ADict(Dict):
         items = []
         if isinstance(value, (MutableMapping, dict)):
             for k, v in value.items():
-                concat = k if key == "" else f"{key}.{k}"
+                concat = k if key == '' else f'{key}.{k}'
                 items += self.get_structural_mapping(concat, v)
         else:
             return [(key, type(value).__name__)]

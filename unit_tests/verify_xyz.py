@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 import os
-from beacon import xyz
+from ato import xyz
 
 
 class XYZUnitTest(unittest.TestCase):

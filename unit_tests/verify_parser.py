@@ -1,5 +1,5 @@
 import unittest
-from beacon.parser import parse_command, parse_value, parse_backtick_string, parse_bracketed_value
+from ato.parser import parse_command, parse_value, parse_backtick_string, parse_bracketed_value
 
 
 class ParserUnitTest(unittest.TestCase):

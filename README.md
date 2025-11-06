@@ -1,20 +1,20 @@
-# Beacon
+# Ato
 
-Beacon is intentionally small — it’s not about lines of code,  
+Ato is intentionally small — it’s not about lines of code,  
 it’s about where they belong.  
 The core fits in a few hundred lines because it doesn’t need to fight Python — it flows with it.
 
 ---
 
-**Beacon** is a lightweight Python library for experiment management in machine learning and data science.  
+**Ato** is a lightweight Python library for experiment management in machine learning and data science.  
 It provides flexible configuration management, experiment tracking, and hyperparameter optimization —  
 all without the complexity or overhead of heavy frameworks.
 
-## Why Beacon?
+## Why Ato?
 
 ### Core Differentiators
 
-- **True Namespace Isolation**: MultiScope provides independent config contexts (unique to Beacon!)
+- **True Namespace Isolation**: MultiScope provides independent config contexts (unique to Ato!)
 - **Configuration Transparency**: Visualize exact config merge order - debug configs with `manual` command
 - **Built-in Experiment Tracking**: SQLite-based tracking with no external services required
 - **Structural Hashing**: Track experiment structure changes automatically
@@ -28,13 +28,13 @@ all without the complexity or overhead of heavy frameworks.
 ## Quick Start
 
 ```bash
-pip install beacon-python
+pip install ato
 ```
 
 ### 30-Second Example
 
 ```python
-from beacon.scope import Scope
+from ato.scope import Scope
 
 scope = Scope()
 
@@ -60,12 +60,12 @@ if __name__ == '__main__':
 
 - [ADict: Enhanced Dictionary](#adict-enhanced-dictionary)
 - [Scope: Configuration Management](#scope-configuration-management)
-  - [MultiScope: Namespace Isolation](#2-multiscope---multiple-configuration-contexts) ⭐ Unique to Beacon
-  - [Config Documentation & Debugging](#5-configuration-documentation--inspection) ⭐ Unique to Beacon
+  - [MultiScope: Namespace Isolation](#2-multiscope---multiple-configuration-contexts) ⭐ Unique to Ato
+  - [Config Documentation & Debugging](#5-configuration-documentation--inspection) ⭐ Unique to Ato
 - [SQL Tracker: Experiment Tracking](#sql-tracker-experiment-tracking)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
 - [Best Practices](#best-practices)
-- [Comparison with Hydra](#beacon-vs-hydra)
+- [Comparison with Hydra](#ato-vs-hydra)
 
 ---
 
@@ -97,7 +97,7 @@ These utilities maximize developer productivity and reduce boilerplate:
 ### Quick Examples
 
 ```python
-from beacon.adict import ADict
+from ato.adict import ADict
 
 # Structural hashing - track config structure changes
 config1 = ADict(lr=0.1, epochs=100, model='resnet50')
@@ -137,7 +137,7 @@ config.data.augmentation.brightness = 0.2
 **Perfect for Scope integration**:
 
 ```python
-from beacon.scope import Scope
+from ato.scope import Scope
 
 scope = Scope()
 
@@ -192,7 +192,7 @@ Lazy Configs (computed after CLI)
 #### Simple Configuration
 
 ```python
-from beacon.scope import Scope
+from ato.scope import Scope
 
 scope = Scope()
 
@@ -297,11 +297,11 @@ def my_config(cfg):
 
 #### 2. MultiScope - Multiple Configuration Contexts
 
-**Unique to Beacon**: Manage completely separate configuration namespaces. Unlike Hydra's config groups, MultiScope provides true **namespace isolation** with independent priority systems.
+**Unique to Ato**: Manage completely separate configuration namespaces. Unlike Hydra's config groups, MultiScope provides true **namespace isolation** with independent priority systems.
 
 ##### Why MultiScope?
 
-| Challenge | Hydra's Approach | Beacon's MultiScope |
+| Challenge | Hydra's Approach | Ato's MultiScope |
 |-----------|------------------|---------------------|
 | Separate model/data configs | Config groups in one namespace | **Independent scopes with own priorities** |
 | Avoid key collisions | Manual prefixing (`model.lr`, `train.lr`) | **Automatic namespace isolation** |
@@ -311,7 +311,7 @@ def my_config(cfg):
 ##### Basic Usage
 
 ```python
-from beacon.scope import Scope, MultiScope
+from ato.scope import Scope, MultiScope
 
 model_scope = Scope(name='model')
 data_scope = Scope(name='data')
@@ -397,7 +397,7 @@ python train.py resnet101 imagenet
 
 #### 3. Import/Export Configs
 
-Beacon supports importing configs from multiple frameworks:
+Ato supports importing configs from multiple frameworks:
 
 ```python
 @scope.observe()
@@ -421,7 +421,7 @@ def load_external(config):
 **Hydra-style config composition** is also built-in via `compose_hierarchy`:
 
 ```python
-from beacon.adict import ADict
+from ato.adict import ADict
 
 # Hydra-style directory structure:
 # configs/
@@ -458,10 +458,10 @@ config = ADict.compose_hierarchy(
 
 #### 4. Argparse Integration
 
-Mix Beacon with existing argparse code:
+Mix Ato with existing argparse code:
 
 ```python
-from beacon.scope import Scope
+from ato.scope import Scope
 import argparse
 
 scope = Scope(use_external_parser=True)
@@ -485,7 +485,7 @@ if __name__ == '__main__':
 
 #### 5. Configuration Documentation & Inspection
 
-**One of Beacon's most powerful features**: Auto-generate documentation AND visualize the exact order of configuration application.
+**One of Ato's most powerful features**: Auto-generate documentation AND visualize the exact order of configuration application.
 
 ##### Basic Documentation
 
@@ -530,7 +530,7 @@ The **applying order visualization** shows you **exactly** how your configs are 
 For complex projects with multiple scopes, `manual` shows each scope separately:
 
 ```python
-from beacon.scope import Scope, MultiScope
+from ato.scope import Scope, MultiScope
 
 model_scope = Scope(name='model')
 train_scope = Scope(name='train')
@@ -661,8 +661,8 @@ Project (my_ml_project)
 #### Logging Experiments
 
 ```python
-from beacon.db_routers.sql.manager import SQLLogger
-from beacon.adict import ADict
+from ato.db_routers.sql.manager import SQLLogger
+from ato.adict import ADict
 
 # Setup config
 config = ADict(
@@ -704,7 +704,7 @@ logger.finish(status='completed')
 #### Querying Experiments
 
 ```python
-from beacon.db_routers.sql.manager import SQLFinder
+from ato.db_routers.sql.manager import SQLFinder
 
 finder = SQLFinder(config)
 
@@ -763,7 +763,7 @@ Built-in **Hyperband** algorithm for efficient hyperparameter search with early 
 
 ### Extensible Design
 
-Beacon's hyperopt module is built for extensibility and reusability:
+Ato's hyperopt module is built for extensibility and reusability:
 
 | Component | Purpose | Benefit |
 |-----------|---------|---------|
@@ -774,7 +774,7 @@ Beacon's hyperopt module is built for extensibility and reusability:
 **This design makes it trivial to implement custom search algorithms**:
 
 ```python
-from beacon.hyperopt.base import GridSpaceMixIn, HyperOpt
+from ato.hyperopt.base import GridSpaceMixIn, HyperOpt
 
 class RandomSearch(GridSpaceMixIn, HyperOpt):
     def main(self, func):
@@ -804,9 +804,9 @@ Hyperband uses successive halving:
 ### Basic Usage
 
 ```python
-from beacon.adict import ADict
-from beacon.hyperopt.hyperband import HyperBand
-from beacon.scope import Scope
+from ato.adict import ADict
+from ato.hyperopt.hyperband import HyperBand
+from ato.scope import Scope
 
 scope = Scope()
 
@@ -894,10 +894,10 @@ Space types:
 
 ### Distributed Hyperparameter Search
 
-Beacon supports distributed hyperparameter optimization out of the box:
+Ato supports distributed hyperparameter optimization out of the box:
 
 ```python
-from beacon.hyperopt.hyperband import DistributedHyperBand
+from ato.hyperopt.hyperband import DistributedHyperBand
 import torch.distributed as dist
 
 # Initialize distributed training
@@ -962,7 +962,7 @@ my_project/
 
 ```python
 # configs/default.py
-from beacon.scope import Scope
+from ato.scope import Scope
 
 scope = Scope()
 
@@ -998,8 +998,8 @@ def defaults(cfg):
 ### 3. Combined Workflow
 
 ```python
-from beacon.scope import Scope
-from beacon.db_routers.sql.manager import SQLLogger
+from ato.scope import Scope
+from ato.db_routers.sql.manager import SQLLogger
 from configs.default import scope
 
 @scope
@@ -1061,8 +1061,8 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 ### Development Setup
 
 ```bash
-git clone https://github.com/yourusername/beacon.git
-cd beacon
+git clone https://github.com/yourusername/ato.git
+cd ato
 pip install -e .
 ```
 
@@ -1070,7 +1070,7 @@ pip install -e .
 
 ## Comparison with Other Tools
 
-| Feature | Beacon | MLflow | W&B | Hydra |
+| Feature | Ato | MLflow | W&B | Hydra |
 |---------|--------|--------|-----|-------|
 | **Core Features** |
 | Zero setup | ✅ | ❌ | ❌ | ✅ |
@@ -1101,16 +1101,16 @@ pip install -e .
 
 ⁽²⁾ Team collaboration via MultiScope: separate config ownership per team (e.g., Team A owns model scope, Team B owns data scope) without naming conflicts.
 
-**Note on config compatibility**: Beacon provides built-in support for other config frameworks:
+**Note on config compatibility**: Ato provides built-in support for other config frameworks:
 - **Hydra-style composition**: `compose_hierarchy()` supports config groups, select, overrides - full compatibility
 - **OpenMMLab configs**: `load_mm_config()` handles `_base_` inheritance and `_delete_` keys
 - Migration from existing projects is seamless - just import your configs and go
 
-### Beacon vs. Hydra
+### Ato vs. Hydra
 
-While Hydra is excellent for config composition, Beacon provides unique features:
+While Hydra is excellent for config composition, Ato provides unique features:
 
-| Aspect | Hydra | Beacon |
+| Aspect | Hydra | Ato |
 |--------|-------|--------|
 | **Namespace isolation** | Config groups share namespace | ✅ MultiScope with independent namespaces<br/>(no key collisions) |
 | **Priority system** | Single global override system | ✅ Per-scope priority + lazy evaluation |
@@ -1120,7 +1120,7 @@ While Hydra is excellent for config composition, Beacon provides unique features
 
 ⁽³⁾ Example: Team A defines `model_scope`, Team B defines `data_scope`, both can use `model.lr` and `data.lr` without conflicts.
 
-**Use Beacon over Hydra when:**
+**Use Ato over Hydra when:**
 - Multiple teams need independent config ownership (MultiScope)
 - You want to avoid key collision issues (no manual prefixing needed)
 - You need to debug why a config value was set (`manual` command)
@@ -1134,14 +1134,14 @@ While Hydra is excellent for config composition, Beacon provides unique features
 - You don't need namespace isolation
 
 **Why not both?**
-- Beacon has **built-in Hydra-style composition** via `compose_hierarchy()`
-- You can use Hydra's directory structure and config groups directly in Beacon
+- Ato has **built-in Hydra-style composition** via `compose_hierarchy()`
+- You can use Hydra's directory structure and config groups directly in Ato
 - Get MultiScope + experiment tracking + merge debugging on top of Hydra's composition
 - Migration is literally just replacing `hydra.compose()` with `ADict.compose_hierarchy()`
 
-**Beacon is for you if:**
+**Ato is for you if:**
 - You want lightweight, offline-first experiment tracking
 - You need **true namespace isolation for team collaboration**
-- **You want to debug config merge order visually** (unique to Beacon!)
+- **You want to debug config merge order visually** (unique to Ato!)
 - You prefer simple Python over complex frameworks
 - You want reproducibility without overhead

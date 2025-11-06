@@ -1,6 +1,6 @@
-from beacon.adict import ADict
-from beacon.hyperopt.hyperband import HyperBand
-from beacon.scope import Scope
+from ato.adict import ADict
+from ato.hyperopt.hyperband import HyperBand
+from ato.scope import Scope
 import random
 
 scope = Scope()

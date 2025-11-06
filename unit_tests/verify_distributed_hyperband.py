@@ -2,9 +2,9 @@ import os
 
 import torch
 
-from beacon.adict import ADict
-from beacon.hyperopt.hyperband import DistributedHyperBand
-from beacon.scope import Scope
+from ato.adict import ADict
+from ato.hyperopt.hyperband import DistributedHyperBand
+from ato.scope import Scope
 import torch.distributed as dist
 import random
 

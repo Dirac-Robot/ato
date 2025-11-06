@@ -4,8 +4,8 @@ from typing import Optional
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, Session as SessionType
 
-from beacon.db_routers import BaseLogger, BaseFinder
-from beacon.db_routers.sql.schema import Base, Project, Experiment, Metric, Artifact, Fingerprint
+from ato.db_routers import BaseLogger, BaseFinder
+from ato.db_routers.sql.schema import Base, Project, Experiment, Metric, Artifact, Fingerprint
 
 
 class SQLLogger(BaseLogger):

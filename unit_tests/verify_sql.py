@@ -1,9 +1,9 @@
 import unittest
 import tempfile
 import os
-from beacon.adict import ADict
-from beacon.db_routers.sql.manager import SQLLogger, SQLFinder
-from beacon.db_routers.sql.schema import Base, Project, Experiment, Metric
+from ato.adict import ADict
+from ato.db_routers.sql.manager import SQLLogger, SQLFinder
+from ato.db_routers.sql.schema import Base, Project, Experiment, Metric
 
 
 class SQLLoggerUnitTest(unittest.TestCase):

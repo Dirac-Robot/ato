@@ -3,7 +3,7 @@ import json
 import pickle
 import unittest
 
-from beacon.adict import ADict
+from ato.adict import ADict
 
 from copy import deepcopy as dcp
 

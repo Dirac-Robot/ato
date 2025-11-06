@@ -2,8 +2,8 @@ import unittest
 import sys
 from itertools import chain
 
-from beacon.adict import ADict
-from beacon.scope import Scope, parse_args_pythonic
+from ato.adict import ADict
+from ato.scope import Scope, parse_args_pythonic
 
 
 class ScopeUnitTest(unittest.TestCase):

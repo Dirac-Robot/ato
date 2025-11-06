@@ -2,8 +2,8 @@ import math
 from copy import deepcopy as dcp
 from itertools import chain
 
-from beacon.adict import ADict
-from beacon.hyperopt.base import HyperOpt, DistributedMixIn, GridSpaceMixIn
+from ato.adict import ADict
+from ato.hyperopt.base import HyperOpt, DistributedMixIn, GridSpaceMixIn
 
 
 class HyperBand(HyperOpt, GridSpaceMixIn):

@@ -1,7 +1,7 @@
 import sys
 import unittest
 
-from beacon.scope import Scope, MultiScope
+from ato.scope import Scope, MultiScope
 
 
 class MultiScopeTest(unittest.TestCase):

@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "beacon-python"
-version = "2.0.0"
+name = "ato"
+version = "2.0.1"
 description = "A Python library for experiment tracking and hyperparameter optimization"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "beacon contributors"}
+    {name = "ato contributors"}
 ]
 keywords = ["machine learning", "experiment tracking", "hyperparameter optimization"]
 classifiers = [
@@ -38,10 +38,10 @@ dependencies = [
 distributed = ["torch>=1.8.0"]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/beacon"
-Repository = "https://github.com/yourusername/beacon"
-Documentation = "https://github.com/yourusername/beacon#readme"
-Issues = "https://github.com/yourusername/beacon/issues"
+Homepage = "https://github.com/yourusername/ato"
+Repository = "https://github.com/yourusername/ato"
+Documentation = "https://github.com/yourusername/ato#readme"
+Issues = "https://github.com/yourusername/ato/issues"
 
 [tool.setuptools.packages.find]
-include = ["beacon*"]
+include = ["ato*"]

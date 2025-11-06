@@ -6,7 +6,7 @@ from itertools import product
 import numpy as np
 import torch.distributed as dist
 
-from beacon.adict import ADict
+from ato.adict import ADict
 
 
 class HyperOpt:

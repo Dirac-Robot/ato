@@ -1,7 +1,7 @@
 import os
 from typing import Iterable
 
-from beacon.utils import convert_string_to_value
+from ato.utils import convert_string_to_value
 
 
 class GlobalParser:
