@@ -23,7 +23,7 @@ This isn't minimalism for its own sake.
 It's **structural restraint** — interfering only where necessary, staying out of the way everywhere else.
 
 **What Ato provides:**
-- **Config composition** with explicit priority and merge order debugging
+- **Config composition** with explicit priority, dependency chaining, and merge order debugging
 - **Namespace isolation** for multi-team projects (MultiScope)
 - **Experiment tracking** in local SQLite with zero setup
 - **Hyperparameter search** via Hyperband (or compose with Optuna/Ray Tune)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
 - `@scope.observe()` defines config sources
 - `@scope` injects the merged config
 - CLI overrides work automatically
-- Priority-based merging (defaults → named configs → CLI → lazy evaluation)
+- Priority-based merging with dependency chaining (defaults → named configs → CLI → lazy evaluation)
 
 ---
 
@@ -75,6 +75,7 @@ if __name__ == '__main__':
 
 - [ADict: Enhanced Dictionary](#adict-enhanced-dictionary)
 - [Scope: Configuration Management](#scope-configuration-management)
+  - [Config Chaining](#config-chaining)
   - [MultiScope: Namespace Isolation](#multiscope-namespace-isolation)
   - [Config Documentation & Debugging](#configuration-documentation--debugging)
 - [SQL Tracker: Experiment Tracking](#sql-tracker-experiment-tracking)
@@ -226,6 +227,47 @@ python train.py my_config lr=0.001 batch_size=128
 ```
 
 **Note**: Wrap strings with `%` (e.g., `%resnet101%`) instead of quotes.
+
+### Config Chaining
+
+Sometimes configs have dependencies on other configs. Use `chain_with` to automatically apply prerequisite configs:
+
+```python
+@scope.observe()
+def base_setup(config):
+    config.project_name = 'my_project'
+    config.data_dir = '/data'
+
+@scope.observe()
+def gpu_setup(config):
+    config.device = 'cuda'
+    config.num_gpus = 4
+
+@scope.observe(chain_with='base_setup')  # Automatically applies base_setup first
+def advanced_training(config):
+    config.distributed = True
+    config.mixed_precision = True
+
+@scope.observe(chain_with=['base_setup', 'gpu_setup'])  # Multiple dependencies
+def multi_node_training(config):
+    config.nodes = 4
+    config.world_size = 16
+```
+
+```bash
+# Calling advanced_training automatically applies base_setup first
+python train.py advanced_training
+# Results in: base_setup → advanced_training
+
+# Calling multi_node_training applies all dependencies
+python train.py multi_node_training
+# Results in: base_setup → gpu_setup → multi_node_training
+```
+
+**Why this matters:**
+- **Explicit dependencies**: No more remembering to call prerequisite configs
+- **Composable configs**: Build complex configs from simpler building blocks
+- **Prevents errors**: Can't use a config without its dependencies
 
 ### Lazy Evaluation
 
@@ -892,11 +934,12 @@ Ato is designed to **compose** with existing tools, not replace them.
 - Built-in Hyperband
 - Or compose with Optuna/Ray Tune — Ato's configs work with any optimizer
 
-### Three Capabilities Other Tools Don't Provide
+### Four Capabilities Other Tools Don't Provide
 
-1. **MultiScope** — True namespace isolation with independent priority systems
-2. **`manual` command** — Visualize exact config merge order for debugging
-3. **Structural hashing** — Track when experiment **architecture** changes, not just values
+1. **Config chaining (`chain_with`)** — Explicit dependency management between configs
+2. **MultiScope** — True namespace isolation with independent priority systems
+3. **`manual` command** — Visualize exact config merge order for debugging
+4. **Structural hashing** — Track when experiment **architecture** changes, not just values
 
 ### When to Use Ato
 
