@@ -296,6 +296,7 @@ class Scope:
             self.manuals.update(manual)
         else:
             field(self.manuals)
+        return field
 
     @classmethod
     def logging_manual(cls):
