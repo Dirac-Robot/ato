@@ -1,16 +1,40 @@
-# Ato
+# Ato: A Tiny Orchestrator
 
-Ato is intentionally small — it’s not about lines of code,  
-it’s about where they belong.  
-The core fits in a few hundred lines because it doesn’t need to fight Python — it flows with it.
+## A minimal, composable config layer for Python and ML pipelines
+
+I didn’t know there was a great tool called Hydra.
+So I built something a bit simpler, a bit more opinionated,
+and maybe a bit more compatible — something that could also work nicely
+with amazing tools like Hydra, WandB, or MLflow.
+
+Even though I didn’t know these tools at the time,
+I deliberately designed for compatibility —
+and later, after learning about Hydra and others,
+I added explicit interop layers.
+Because I know how tempting — and exhausting —
+it can be to move from a familiar environment
+to a new, more attractive one.
+
+So — there’s no need to compete.
+Just try it once.
+This tool won’t make you tired.  
+It might even feel a little kind.  
+
+After all, *Ato* was never built to impress — it was built to stay.
 
 ---
 
-**Ato** is a lightweight Python library for experiment management in machine learning and data science.  
-It provides flexible configuration management, experiment tracking, and hyperparameter optimization —  
-all without the complexity or overhead of heavy frameworks.
+**Ato** is designed to work *with* your existing tools — not replace them.
+It provides configuration management, experiment tracking, and hyperparameter optimization
+as a **philosophical layer** that plays nicely with Hydra, MLflow, W&B, and whatever else you use.
 
 ## Why Ato?
+
+Ato isn't trying to compete with Hydra or replace your experiment tracking platform.
+It's for the projects that live *before* things get complicated — or for teams that want clarity over features.
+
+**Philosophy over framework**: Ato gives you enough structure to stay organized, without imposing a rigid system.
+Use it standalone, or layer it on top of Hydra, MLflow, or W&B. It's a tool, not a commitment.
 
 ### Core Differentiators
 
@@ -65,7 +89,8 @@ if __name__ == '__main__':
 - [SQL Tracker: Experiment Tracking](#sql-tracker-experiment-tracking)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
 - [Best Practices](#best-practices)
-- [Comparison with Hydra](#ato-vs-hydra)
+- [Future Work](#future-work--optional-modular-non-intrusive)
+- [Working with Existing Tools](#working-with-existing-tools)
 
 ---
 
@@ -1054,6 +1079,35 @@ MIT License
 
 ---
 
+## Future Work — Optional, Modular, Non-Intrusive
+
+We're planning to add an **HTML dashboard** (as a small local daemon) for teams that want visual exploration:
+
+**Planned features:**
+- Metric comparison & trends
+- Run history & artifact browsing
+- Configuration diffs (including structural hash visualization)
+- Interactive hyperparameter analysis
+
+**Philosophy stays the same:**
+- **No hard dependency** - Ato core (Scope / ADict / SQL tracker / HyperOpt) works 100% without the dashboard
+- **No coupling** - The dashboard is a separate process that reads from SQLite/logs; it doesn't block or modify your runs
+- **Zero lock-in** - Remove the dashboard and nothing in your training code changes
+- **Fully modular** - Pick only what you need
+
+**Example workflows:**
+
+| What you need | What you use |
+|---------------|--------------|
+| Just configs | `ADict` + `Scope` only — no DB, no UI |
+| Headless tracking | Add SQL tracker — still no UI |
+| Visual exploration | Start dashboard daemon when you want; stop it and keep training |
+| Full stack | Use everything, or mix with MLflow/W&B dashboards |
+
+**Guiding rule:** Ato is a set of small, composable tools — not a monolith. Use what helps; ignore the rest.
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
@@ -1068,80 +1122,87 @@ pip install -e .
 
 ---
 
-## Comparison with Other Tools
+## Working with Existing Tools
 
-| Feature | Ato | MLflow | W&B | Hydra |
-|---------|--------|--------|-----|-------|
-| **Core Features** |
-| Zero setup | ✅ | ❌ | ❌ | ✅ |
-| Offline-first | ✅ | Partial | ❌ | ✅ |
-| Config priority system | ✅ Explicit | Partial (Tags) | Partial (Run params) | ✅ Override |
-| **True namespace isolation** | **✅ MultiScope** | **❌** | **❌** | **❌ Config groups only** |
-| **Config merge visualization** | **✅ `manual`** | **❌** | **❌** | **Partial (`--cfg` tree)** |
-| Structural hashing | ✅ | ❌ | ❌ | ❌ |
-| Built-in HyperOpt | ✅ Hyperband | ❌ | ✅ Sweeps | Plugins (Optuna) |
-| CLI-first design | ✅ | ❌ | ❌ | ✅ |
-| **Compatibility** |
-| Framework agnostic | ✅ | ✅ | ✅ | ✅ |
-| Distributed training | ✅ Native + DDP/FSDP⁽¹⁾ | ✅ | ✅ | ✅ |
-| Distributed HyperOpt | ✅ `DistributedHyperBand` | ❌ | Partial | Plugins |
-| Hydra-style composition | ✅ `compose_hierarchy` | N/A | N/A | Native |
-| OpenMMLab configs | ✅ `load_mm_config` | ❌ | ❌ | ❌ |
-| **Visualization & UI** |
-| Web dashboard | 🔜 Planned | ✅ | ✅ | ❌ |
-| Real-time metrics | 🔜 Planned | ✅ | ✅ | ❌ |
-| Interactive plots | 🔜 Planned | ✅ | ✅ | ❌ |
-| Metric comparison UI | 🔜 Planned | ✅ | ✅ | ❌ |
-| **Advanced Features** |
-| Model registry | 🔜 Planned | ✅ | ✅ | ❌ |
-| Dataset versioning | 🔜 Planned | Partial | ✅ | ❌ |
-| Team collaboration | ✅ MultiScope⁽²⁾ | ✅ Platform | ✅ Platform | ❌ |
+Ato isn't meant to replace Hydra, MLflow, or W&B — it's a **composable layer** you can use alongside them.
 
-⁽¹⁾ Native distributed hyperparameter optimization via `DistributedHyperBand`. Regular training is compatible with any distributed framework (DDP, FSDP, DeepSpeed) - just integrate logging, no special code needed.
+Think of Ato as a "config control surface" that gives you clarity and structure without forcing you into a framework.
+Many teams use Ato for the 90% of experiments that don't need heavy infrastructure, then graduate to larger tools when needed.
 
-⁽²⁾ Team collaboration via MultiScope: separate config ownership per team (e.g., Team A owns model scope, Team B owns data scope) without naming conflicts.
+### Ato + Hydra = Better Together
 
-**Note on config compatibility**: Ato provides built-in support for other config frameworks:
-- **Hydra-style composition**: `compose_hierarchy()` supports config groups, select, overrides - full compatibility
-- **OpenMMLab configs**: `load_mm_config()` handles `_base_` inheritance and `_delete_` keys
-- Migration from existing projects is seamless - just import your configs and go
+Ato has **built-in Hydra compatibility** via `compose_hierarchy()`:
 
-### Ato vs. Hydra
+```python
+from ato.adict import ADict
 
-While Hydra is excellent for config composition, Ato provides unique features:
+# Load Hydra-style configs directly
+config = ADict.compose_hierarchy(
+    root='configs',
+    config_filename='config',
+    select={'model': 'resnet50', 'data': 'imagenet'},
+    overrides={'model.lr': 0.01}
+)
 
-| Aspect | Hydra | Ato |
-|--------|-------|--------|
-| **Namespace isolation** | Config groups share namespace | ✅ MultiScope with independent namespaces<br/>(no key collisions) |
-| **Priority system** | Single global override system | ✅ Per-scope priority + lazy evaluation |
-| **Config merge debugging** | Tree view (`--cfg`)<br/>Shows final config | ✅ `manual` command<br/>Shows merge order & execution flow |
-| **Experiment tracking** | Requires external tools<br/>(MLflow/W&B) | ✅ Built-in SQL tracker |
-| **Team workflow** | Single config file ownership | ✅ Separate scope ownership per team⁽³⁾ |
+# Now add Ato's unique features on top:
+# - MultiScope for namespace isolation
+# - `manual` command for merge debugging
+# - Built-in SQL tracking
+```
 
-⁽³⁾ Example: Team A defines `model_scope`, Team B defines `data_scope`, both can use `model.lr` and `data.lr` without conflicts.
+**Migration from Hydra** is literally just replacing `hydra.compose()` with `ADict.compose_hierarchy()`.
 
-**Use Ato over Hydra when:**
-- Multiple teams need independent config ownership (MultiScope)
-- You want to avoid key collision issues (no manual prefixing needed)
-- You need to debug why a config value was set (`manual` command)
-- You want experiment tracking without adding MLflow/W&B
-- You're migrating from OpenMMLab projects
+### What Makes Ato Different?
 
-**Use Hydra when:**
-- You have very deep config hierarchies with complex inheritance
-- You prefer YAML over Python
-- You need the mature plugin ecosystem (Ray, Joblib, etc.)
-- You don't need namespace isolation
+Ato focuses on **three unique capabilities** that complement existing tools:
 
-**Why not both?**
-- Ato has **built-in Hydra-style composition** via `compose_hierarchy()`
-- You can use Hydra's directory structure and config groups directly in Ato
-- Get MultiScope + experiment tracking + merge debugging on top of Hydra's composition
-- Migration is literally just replacing `hydra.compose()` with `ADict.compose_hierarchy()`
+| Feature | What It Solves | Why It Matters |
+|---------|----------------|----------------|
+| **MultiScope** | True namespace isolation | Multiple teams can own separate config scopes without key collisions (no `model_lr` vs `data_lr` prefixing needed) |
+| **`manual` command** | Config merge order visualization | Debug *why* a config value is set — see exact merge order, not just final result |
+| **Offline-first tracking** | Zero-setup SQLite tracking | Experiment tracking without servers, platforms, or external dependencies |
 
-**Ato is for you if:**
-- You want lightweight, offline-first experiment tracking
-- You need **true namespace isolation for team collaboration**
-- **You want to debug config merge order visually** (unique to Ato!)
-- You prefer simple Python over complex frameworks
-- You want reproducibility without overhead
+### Compatibility Matrix
+
+Ato plays nicely with your existing stack:
+
+| Tool | Ato's Role | Integration |
+|------|------------|-------------|
+| **Hydra** | Extends with MultiScope + merge debugging | `compose_hierarchy()` loads Hydra configs directly |
+| **MLflow** | Lightweight alternative for simple projects | Use Ato's SQL tracker for offline work, MLflow for dashboards |
+| **W&B** | Offline-first complement | Track locally with Ato, sync to W&B when needed |
+| **OpenMMLab** | Config migration layer | `load_mm_config()` handles `_base_` inheritance |
+| **PyTorch/TF/JAX** | Framework-agnostic config + tracking | Works with any training framework |
+
+### When to Use What
+
+**Use Ato alone** for:
+- Individual research experiments
+- Projects that don't need a dashboard
+- Teams wanting namespace isolation (MultiScope)
+- Config merge debugging (`manual` command)
+
+**Use Ato + Hydra** when:
+- You need Hydra's deep config hierarchies
+- Your team already uses Hydra YAML structure
+- You want MultiScope on top of Hydra's composition
+
+**Use Ato + MLflow/W&B** when:
+- You want local-first tracking with optional cloud sync
+- You need Ato's structural hashing + offline SQLite
+- Your team prefers MLflow/W&B dashboards for collaboration
+
+**Graduate to pure MLflow/W&B** when:
+- You need real-time dashboards and team collaboration UI
+- Model registry and dataset versioning become critical
+- Your experiments are production-facing
+
+### What Ato Doesn't Do
+
+Ato intentionally skips features that larger tools handle better:
+- ❌ Real-time web dashboards (use MLflow/W&B)
+- ❌ Model registry (use MLflow)
+- ❌ Dataset versioning (use W&B/DVC)
+- ❌ Deep plugin ecosystems (use Hydra)
+
+Ato's philosophy: **give you enough structure to stay organized, without becoming infrastructure.**

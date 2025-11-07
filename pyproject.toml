@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ato"
 version = "2.0.1"
-description = "A Python library for experiment tracking and hyperparameter optimization"
+description = "A minimal, composable config layer for Python and ML pipelines. Built to stay, not to impress."
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
     {name = "ato contributors"}
 ]
-keywords = ["machine learning", "experiment tracking", "hyperparameter optimization"]
+keywords = ["config management", "experiment tracking", "hyperparameter optimization", "lightweight", "composable", "namespace isolation", "machine learning"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
