@@ -22,8 +22,8 @@ Ato was built on three constraints:
 This isn't minimalism for its own sake.
 It's **structural restraint** — interfering only where necessary, staying out of the way everywhere else.
 
-**Reproducibility is built-in, not bolted-on:**
-Most tools track configs. Ato tracks configs, code, and outputs — three dimensions of reproducibility in one system. Not for compliance or auditing, but for **debugging** experiments when results don't match expectations.
+**Reproducibility as a debugging tool:**
+Ato tracks configs, code, and outputs — three dimensions of reproducibility in one system. Not for compliance or auditing, but for **debugging** experiments when results don't match expectations. When experiments diverge, you can trace whether it's a config change, code change, or runtime behavior change.
 
 **What Ato provides:**
 - **Config composition** with explicit priority, dependency chaining, and merge order debugging
@@ -493,14 +493,14 @@ if __name__ == '__main__':
 
 ### Reproducibility Engine
 
-**The Problem:** "Why did my experiment produce different results?"
+**The Question:** "Why did my experiment produce different results?"
 
-Most tools only track **config values**. When results diverge, you're left guessing:
+When results diverge, you need to know:
 - Did the code change?
-- Did the data change?
-- Did the environment change?
+- Did the config structure change?
+- Did the runtime behavior change?
 
-**Ato's Solution:** Track **three dimensions of reproducibility**:
+**Ato tracks three dimensions of reproducibility:**
 
 | Dimension | What Changes | How Ato Tracks It |
 |-----------|--------------|-------------------|
@@ -603,14 +603,8 @@ print(f"Code fingerprint: {best_run.fingerprints['train_step']}")
 
 **Real-world scenario:**
 
-You run 100 experiments. Result at epoch 50 suddenly jumps.
+You run 100 experiments. Result at epoch 50 suddenly jumps. Here's how to debug it:
 
-**Without Ato:**
-- Check git history manually
-- Compare config files by hand
-- No way to know if outputs drifted
-
-**With Ato:**
 ```python
 # Find when code changed
 stats = finder.get_trace_statistics('my_project', trace_id='train_step')
@@ -629,7 +623,7 @@ for code_hash, runs in by_code_version.items():
     print(f"Code v{code_hash[:8]}: {avg_acc:.2%} avg accuracy")
 ```
 
-**Result:** You immediately see that code version `abc123` performs 5% better than `def456`.
+**Result:** Code version `abc123` performs 5% better than `def456`. You can now trace exactly which commit introduced the change and why performance improved.
 
 #### Static vs Runtime Tracing
 
