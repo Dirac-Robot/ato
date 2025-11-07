@@ -15,12 +15,15 @@ pip install ato
 
 Ato was built on three constraints:
 
-1. **Visibility** — When configs merge from multiple sources, you should see **why** a value was set.
+1. **Visibility** — When configs merge from multiple sources, you should see **why** a value was set. When experiments diverge, you should see **what** changed.
 2. **Composability** — Each module (ADict, Scope, SQLTracker, HyperOpt) works independently. Use one, use all, or mix with other tools.
 3. **Structural neutrality** — Ato is a layer, not a platform. It has no opinion on your stack.
 
 This isn't minimalism for its own sake.
 It's **structural restraint** — interfering only where necessary, staying out of the way everywhere else.
+
+**Reproducibility is built-in, not bolted-on:**
+Most tools track configs. Ato tracks configs, code, and outputs — three dimensions of reproducibility in one system. Not for compliance or auditing, but for **debugging** experiments when results don't match expectations.
 
 **What Ato provides:**
 - **Config composition** with explicit priority, dependency chaining, and merge order debugging
@@ -78,7 +81,7 @@ if __name__ == '__main__':
   - [Config Chaining](#config-chaining)
   - [MultiScope: Namespace Isolation](#multiscope-namespace-isolation)
   - [Config Documentation & Debugging](#configuration-documentation--debugging)
-  - [Code Versioning with Traces](#code-versioning-with-traces)
+  - [Reproducibility Engine](#reproducibility-engine)
 - [SQL Tracker: Experiment Tracking](#sql-tracker-experiment-tracking)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
 - [Best Practices](#best-practices)
@@ -488,72 +491,26 @@ if __name__ == '__main__':
     train()
 ```
 
-### Code Versioning with Traces
+### Reproducibility Engine
 
-Track code changes automatically using **static traces** (code fingerprints) and **runtime traces** (execution fingerprints).
+**The Problem:** "Why did my experiment produce different results?"
 
-#### Static Tracing
+Most tools only track **config values**. When results diverge, you're left guessing:
+- Did the code change?
+- Did the data change?
+- Did the environment change?
 
-Track when function code changes:
+**Ato's Solution:** Track **three dimensions of reproducibility**:
 
-```python
-from ato.scope import Scope
+| Dimension | What Changes | How Ato Tracks It |
+|-----------|--------------|-------------------|
+| **Config** | Hyperparameters, model architecture | Structural hashing (ADict) |
+| **Code** | Function implementation, logic | Static tracing (`@scope.trace`) |
+| **Output** | Model predictions, training dynamics | Runtime tracing (`@scope.runtime_trace`) |
 
-scope = Scope()
+This isn't just versioning — it's a **causal debugging system** for experiments.
 
-@scope.observe(default=True)
-def config(config):
-    config.model = 'resnet50'
-    config.lr = 0.001
-
-@scope.trace(trace_id='model_forward')
-def train(config):
-    model = create_model(config.model)
-    # Training code here
-    return final_loss
-
-if __name__ == '__main__':
-    train()
-```
-
-**What this does:**
-- Generates a hash of the function's bytecode, constants, and structure
-- Stored in SQLLogger as a **static fingerprint**
-- Changes to the function code change the fingerprint
-- Use `SQLFinder.get_trace_statistics()` to see how many code versions exist
-
-#### Runtime Tracing
-
-Track when function **outputs** change:
-
-```python
-@scope.runtime_trace(
-    trace_id='model_forward',
-    init_fn=lambda: print("Starting training"),
-    inspect_fn=lambda result: result['loss']  # Track only loss, not full result
-)
-def train(config):
-    # Training code
-    return {'loss': 0.123, 'accuracy': 0.95, 'model_state': {...}}
-```
-
-**Parameters:**
-- `trace_id`: Identifier for this trace
-- `init_fn`: Optional function to run before execution
-- `inspect_fn`: Optional function to extract what to hash from results
-
-**What this does:**
-- Executes the function normally
-- Extracts relevant data via `inspect_fn` (or uses full result)
-- Generates SHA256 hash of the pickled output
-- Stores as **runtime fingerprint** in SQLLogger
-
-**Use cases:**
-- Detect when model outputs change (data drift, code bugs)
-- Track reproducibility across runs
-- Alert when model behavior diverges unexpectedly
-
-**Combined with SQL Tracker:**
+#### Example: Full Reproducibility Tracking
 
 ```python
 from ato.scope import Scope
@@ -563,25 +520,133 @@ scope = Scope()
 
 @scope.observe(default=True)
 def config(config):
+    config.model = 'resnet50'
+    config.lr = 0.001
+    config.batch_size = 32
     config.experiment = {'project_name': 'my_project', 'sql': {'db_path': 'sqlite:///exp.db'}}
 
+# Track code changes
 @scope.trace(trace_id='train_step')
-def train(config):
-    logger = SQLLogger(config)
-    run_id = logger.run()
-
-    # Training code with traced functions
-    loss = train_model()
-
-    logger.finish(status='completed')
+def train_epoch(model, data):
+    # Training logic here
     return loss
 
-# Query trace statistics
-finder = SQLFinder(config)
-stats = finder.get_trace_statistics('my_project', trace_id='train_step')
-print(f"This function has {stats['static_trace_versions']} code versions")
-print(f"Runtime fingerprint versions: {stats['runtime_trace_versions']}")
+# Track output changes
+@scope.runtime_trace(
+    trace_id='model_predictions',
+    inspect_fn=lambda preds: preds[:100]  # Track first 100 predictions
+)
+def evaluate(model, test_data):
+    predictions = model.predict(test_data)
+    return predictions
+
+@scope
+def train(config):
+    logger = SQLLogger(config)
+    run_id = logger.run(tags=['baseline', 'resnet50'])
+
+    model = create_model(config.model)
+
+    for epoch in range(100):
+        loss = train_epoch(model, train_data)
+        logger.log_metric('loss', loss, step=epoch)
+
+    preds = evaluate(model, test_data)
+
+    logger.finish(status='completed')
+
+if __name__ == '__main__':
+    train()
 ```
+
+**What you get:**
+
+1. **Config fingerprint** (structural hash):
+   - Tracks when experiment **architecture** changes
+   - Not just values — detects when you add/remove keys or change types
+
+2. **Code fingerprint** (static trace):
+   - SHA256 hash of function bytecode, constants, variables
+   - Changes when you modify `train_epoch()` logic
+   - Query: "Show me all experiments that used v1 vs v2 of train_step"
+
+3. **Output fingerprint** (runtime trace):
+   - SHA256 hash of actual predictions/outputs
+   - Detects silent failures (code unchanged, output different)
+   - Query: "Why do my predictions differ when config/code are identical?"
+
+#### Debugging with Reproducibility Data
+
+```python
+from ato.db_routers.sql.manager import SQLFinder
+
+finder = SQLFinder(config)
+
+# Find runs with same config structure
+similar_runs = finder.find_similar_runs(run_id=123)
+print(f"Found {len(similar_runs)} runs with same config structure")
+
+# Check code version history
+stats = finder.get_trace_statistics('my_project', trace_id='train_step')
+print(f"Code versions: {stats['static_trace_versions']}")
+print(f"Output versions: {stats['runtime_trace_versions']}")
+
+# Find best run with specific code version
+best_run = finder.find_best_run(
+    project_name='my_project',
+    metric_key='val_accuracy',
+    mode='max'
+)
+print(f"Best accuracy: {best_run.metrics[-1].value}")
+print(f"Code fingerprint: {best_run.fingerprints['train_step']}")
+```
+
+**Real-world scenario:**
+
+You run 100 experiments. Result at epoch 50 suddenly jumps.
+
+**Without Ato:**
+- Check git history manually
+- Compare config files by hand
+- No way to know if outputs drifted
+
+**With Ato:**
+```python
+# Find when code changed
+stats = finder.get_trace_statistics('my_project', trace_id='train_step')
+# "3 different code versions across 100 runs"
+
+# Find which runs used which version
+runs = finder.get_runs_in_project('my_project')
+by_code_version = {}
+for run in runs:
+    code_hash = run.fingerprints.get('train_step')
+    by_code_version.setdefault(code_hash, []).append(run)
+
+# Compare performance by code version
+for code_hash, runs in by_code_version.items():
+    avg_acc = mean([r.metrics[-1].value for r in runs])
+    print(f"Code v{code_hash[:8]}: {avg_acc:.2%} avg accuracy")
+```
+
+**Result:** You immediately see that code version `abc123` performs 5% better than `def456`.
+
+#### Static vs Runtime Tracing
+
+**Use `@scope.trace()` when:**
+- You want to track code changes automatically
+- You're refactoring and want to isolate performance impact
+- You need to audit "which code produced this result?"
+
+**Use `@scope.runtime_trace()` when:**
+- You want to detect **silent failures** (code unchanged, output wrong)
+- You're debugging non-determinism
+- You need to verify model behavior across versions
+
+**Use both when:**
+- Building production ML systems
+- Running long-term research experiments
+- Multiple people modifying the same codebase
 
 ---
 
@@ -1032,11 +1097,11 @@ Ato is designed to **compose** with existing tools, not replace them.
 
 ### Five Capabilities Other Tools Don't Provide
 
-1. **Config chaining (`chain_with`)** — Explicit dependency management between configs
-2. **MultiScope** — True namespace isolation with independent priority systems
-3. **`manual` command** — Visualize exact config merge order for debugging
-4. **Code versioning (`trace`/`runtime_trace`)** — Automatic static and runtime fingerprinting
-5. **Structural hashing** — Track when experiment **architecture** changes, not just values
+1. **Three-dimensional reproducibility** — Track config (structural hash), code (trace), and output (runtime_trace) in one system
+2. **Config chaining (`chain_with`)** — Explicit dependency management between configs
+3. **MultiScope** — True namespace isolation with independent priority systems
+4. **`manual` command** — Visualize exact config merge order for debugging
+5. **Content-based versioning** — No timestamps, no git commits — just fingerprints of what actually ran
 
 ### When to Use Ato
 
