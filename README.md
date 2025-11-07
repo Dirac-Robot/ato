@@ -48,14 +48,14 @@ from ato.scope import Scope
 scope = Scope()
 
 @scope.observe(default=True)
-def config(cfg):
-    cfg.lr = 0.001
-    cfg.batch_size = 32
-    cfg.model = 'resnet50'
+def config(config):
+    config.lr = 0.001
+    config.batch_size = 32
+    config.model = 'resnet50'
 
 @scope
-def train(cfg):
-    print(f"Training {cfg.model} with lr={cfg.lr}")
+def train(config):
+    print(f"Training {config.model} with lr={config.lr}")
     # Your training code here
 
 if __name__ == '__main__':
@@ -188,17 +188,17 @@ if __name__ == '__main__':
 
 ```python
 @scope.observe(default=True)  # Always applied
-def defaults(cfg):
-    cfg.lr = 0.001
-    cfg.epochs = 100
+def defaults(config):
+    config.lr = 0.001
+    config.epochs = 100
 
 @scope.observe(priority=1)  # Applied after defaults
-def high_lr(cfg):
-    cfg.lr = 0.01
+def high_lr(config):
+    config.lr = 0.01
 
 @scope.observe(priority=2)  # Applied last
-def long_training(cfg):
-    cfg.epochs = 300
+def long_training(config):
+    config.epochs = 300
 ```
 
 ```bash
@@ -233,19 +233,19 @@ Sometimes you need configs that depend on other values set via CLI:
 
 ```python
 @scope.observe()
-def base_config(cfg):
-    cfg.model = 'resnet50'
-    cfg.dataset = 'imagenet'
+def base_config(config):
+    config.model = 'resnet50'
+    config.dataset = 'imagenet'
 
 @scope.observe(lazy=True)  # Evaluated AFTER CLI args
-def computed_config(cfg):
+def computed_config(config):
     # Adjust based on dataset
-    if cfg.dataset == 'imagenet':
-        cfg.num_classes = 1000
-        cfg.image_size = 224
-    elif cfg.dataset == 'cifar10':
-        cfg.num_classes = 10
-        cfg.image_size = 32
+    if config.dataset == 'imagenet':
+        config.num_classes = 1000
+        config.image_size = 224
+    elif config.dataset == 'cifar10':
+        config.num_classes = 10
+        config.image_size = 32
 ```
 
 ```bash
@@ -257,13 +257,13 @@ python train.py dataset=%cifar10% computed_config
 
 ```python
 @scope.observe()
-def my_config(cfg):
-    cfg.model = 'resnet50'
-    cfg.num_layers = 50
+def my_config(config):
+    config.model = 'resnet50'
+    config.num_layers = 50
 
     with Scope.lazy():  # Evaluated after CLI
-        if cfg.model == 'resnet101':
-            cfg.num_layers = 101
+        if config.model == 'resnet101':
+            config.num_layers = 101
 ```
 
 ### MultiScope: Namespace Isolation
@@ -316,16 +316,16 @@ python train.py model.backbone=%resnet101% data.dataset=%imagenet%
 
 ```python
 @scope.observe(default=True)
-def config(cfg):
-    cfg.lr = 0.001
-    cfg.batch_size = 32
-    cfg.model = 'resnet50'
+def config(config):
+    config.lr = 0.001
+    config.batch_size = 32
+    config.model = 'resnet50'
 
 @scope.manual
-def config_docs(cfg):
-    cfg.lr = 'Learning rate for optimizer'
-    cfg.batch_size = 'Number of samples per batch'
-    cfg.model = 'Model architecture (resnet50, resnet101, etc.)'
+def config_docs(config):
+    config.lr = 'Learning rate for optimizer'
+    config.batch_size = 'Number of samples per batch'
+    config.model = 'Model architecture (resnet50, resnet101, etc.)'
 ```
 
 ```bash
@@ -353,21 +353,21 @@ When debugging "why is this config value not what I expect?", you can see **exac
 
 ```python
 @scope.observe(default=True)
-def defaults(cfg):
-    cfg.lr = 0.001
+def defaults(config):
+    config.lr = 0.001
 
 @scope.observe(priority=1)
-def experiment_config(cfg):
-    cfg.lr = 0.01
+def experiment_config(config):
+    config.lr = 0.01
 
 @scope.observe(priority=2)
-def another_config(cfg):
-    cfg.lr = 0.1
+def another_config(config):
+    config.lr = 0.1
 
 @scope.observe(lazy=True)
-def adaptive_lr(cfg):
-    if cfg.batch_size > 64:
-        cfg.lr = cfg.lr * 2
+def adaptive_lr(config):
+    if config.batch_size > 64:
+        config.lr = config.lr * 2
 ```
 
 When you run `python train.py manual`, you see:
@@ -432,13 +432,13 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--seed', type=int, default=42)
 
 @scope.observe(default=True)
-def config(cfg):
-    cfg.lr = 0.001
-    cfg.batch_size = 32
+def config(config):
+    config.lr = 0.001
+    config.batch_size = 32
 
 @scope
-def train(cfg):
-    print(f"GPU: {cfg.gpu}, LR: {cfg.lr}")
+def train(config):
+    print(f"GPU: {config.gpu}, LR: {config.lr}")
 
 if __name__ == '__main__':
     parser.parse_args()  # Merges argparse with scope
@@ -760,29 +760,29 @@ from ato.adict import ADict
 scope = Scope()
 
 @scope.observe(default=True)
-def defaults(cfg):
+def defaults(config):
     # Data
-    cfg.data = ADict(
+    config.data = ADict(
         dataset='cifar10',
         batch_size=32,
         num_workers=4
     )
 
     # Model
-    cfg.model = ADict(
+    config.model = ADict(
         backbone='resnet50',
         pretrained=True
     )
 
     # Training
-    cfg.train = ADict(
+    config.train = ADict(
         lr=0.001,
         epochs=100,
         optimizer='adam'
     )
 
     # Experiment tracking
-    cfg.experiment = ADict(
+    config.experiment = ADict(
         project_name='my_project',
         sql=ADict(db_path='sqlite:///experiments.db')
     )
@@ -796,14 +796,14 @@ from ato.db_routers.sql.manager import SQLLogger
 from configs.default import scope
 
 @scope
-def train(cfg):
+def train(config):
     # Setup experiment tracking
-    logger = SQLLogger(cfg)
-    run_id = logger.run(tags=[cfg.model.backbone, cfg.data.dataset])
+    logger = SQLLogger(config)
+    run_id = logger.run(tags=[config.model.backbone, config.data.dataset])
 
     try:
         # Training loop
-        for epoch in range(cfg.train.epochs):
+        for epoch in range(config.train.epochs):
             loss = train_epoch()
             acc = validate()
 
