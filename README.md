@@ -1,49 +1,78 @@
 # Ato: A Tiny Orchestrator
 
-**Configuration, experimentation, and hyperparameter optimization for Python.**
+**When your model fails, you need to know why. When configs collide, you need to see where.**
 
-No runtime magic. No launcher. No platform.
-Just Python modules you compose.
+Ato is what happens when experiment tracking stops pretending to be MLOps.
+
+No dashboards. No platforms. No magic.
+Just fingerprints of what actually ran — configs, code, outputs.
 
 ```bash
 pip install ato
 ```
 
+```python
+# Your experiment breaks. Here's how to debug it:
+python train.py manual  # See exactly how configs merged
+finder.get_trace_statistics('my_project', 'train_step')  # See which code versions ran
+finder.find_similar_runs(run_id=123)  # Find experiments with same structure
+```
+
+**One-line pitch:** ML experiments fail for three reasons — config changes, code changes, or runtime behavior changes. Ato tracks all three automatically.
+
 ---
 
-## Design Philosophy
+## What Ato Is
 
-Ato was built on three constraints:
+Ato is an orchestration layer for Python experiments.
 
-1. **Visibility** — When configs merge from multiple sources, you should see **why** a value was set. When experiments diverge, you should see **what** changed.
-2. **Composability** — Each module (ADict, Scope, SQLTracker, HyperOpt) works independently. Use one, use all, or mix with other tools.
-3. **Structural neutrality** — Ato is a layer, not a platform. It has no opinion on your stack.
+Three pieces, zero coupling:
 
-This isn't minimalism for its own sake.
-It's **structural restraint** — interfering only where necessary, staying out of the way everywhere else.
+1. **ADict** — Config management with structural hashing (track when experiment architecture changes, not just values)
+2. **Scope** — Function decoration with priority-based merging, dependency chaining, and automatic code fingerprinting
+3. **SQLTracker** — Local-first experiment tracking in SQLite (zero setup, zero servers)
 
-**Reproducibility as a debugging tool:**
-Ato tracks configs, code, and outputs — three dimensions of reproducibility in one system. Not for compliance or auditing, but for **debugging** experiments when results don't match expectations. When experiments diverge, you can trace whether it's a config change, code change, or runtime behavior change.
+Each works alone. Together, they form a reproducibility engine.
 
-**What Ato provides:**
-- **Config composition** with explicit priority, dependency chaining, and merge order debugging
-- **Namespace isolation** for multi-team projects (MultiScope)
-- **Experiment tracking** in local SQLite with zero setup
-- **Hyperparameter search** via Hyperband (or compose with Optuna/Ray Tune)
+Not for compliance. Not for dashboards. For **debugging experiments when results diverge**.
 
-**What Ato doesn't provide:**
-- Web dashboards (use MLflow/W&B)
-- Model registry (use MLflow)
-- Dataset versioning (use DVC)
-- Plugin marketplace
+---
 
-Ato is designed to work **between** tools, not replace them.
+## Why Ato Exists
+
+Most config systems solve merging.
+Most tracking systems solve logging.
+
+Ato solves **"why did this experiment produce different results?"**
+
+The answer requires three fingerprints:
+- Config structure (did hyperparameters change?)
+- Code bytecode (did implementation change?)
+- Runtime output (did behavior change?)
+
+Ato tracks all three. Automatically. With zero configuration.
+
+**This isn't a feature. It's an architecture decision.**
+
+**What you get:**
+- Configs merge with explicit priority. Conflicts are visible, not silent.
+- Code changes are fingerprinted automatically. No git commits required.
+- Experiments are tracked in SQLite. No servers, no auth, no network calls.
+- Namespace collisions are impossible. Each scope owns its keys.
+
+**What you don't get:**
+- Dashboards
+- Model registries
+- Dataset versioning
+- Plugin ecosystems
+
+Ato is a **layer**, not a platform. It works between your tools, not instead of them.
 
 ---
 
 ## Quick Start
 
-### 30-Second Example
+**Three lines to tracked experiments:**
 
 ```python
 from ato.scope import Scope
@@ -59,18 +88,19 @@ def config(config):
 @scope
 def train(config):
     print(f"Training {config.model} with lr={config.lr}")
-    # Your training code here
 
 if __name__ == '__main__':
-    train()  # python train.py
-    # Override from CLI: python train.py lr=0.01 model=%resnet101%
+    train()
 ```
 
-**Key features:**
-- `@scope.observe()` defines config sources
-- `@scope` injects the merged config
-- CLI overrides work automatically
-- Priority-based merging with dependency chaining (defaults → named configs → CLI → lazy evaluation)
+**Run it:**
+```bash
+python train.py                          # Uses defaults
+python train.py lr=0.01                  # Override from CLI
+python train.py manual                   # See config merge order
+```
+
+**That's it.** No YAML files. No launchers. No setup.
 
 ---
 
@@ -1050,22 +1080,26 @@ cd ato
 pip install -e .
 ```
 
-### Quality Assurance
+### Release Philosophy
 
-Ato's design philosophy — **structural neutrality** and **debuggable composition** — extends to our testing practices.
+**Every release passes 100+ unit tests.**
+**No unchecked code. No silent failure.**
 
-**Release Policy:**
-- **All 100+ unit tests must pass before any release**
-- No exceptions, no workarounds
-- Tests cover every module: ADict, Scope, MultiScope, SQLTracker, HyperBand
+This isn't a feature. It's a commitment.
 
-**Why this matters:**
-When you build on Ato, you're trusting it to stay out of your way. That means zero regressions, predictable behavior, and reliable APIs. Comprehensive test coverage ensures that each component works independently and composes correctly.
+When you fingerprint experiments, you're trusting the fingerprints are correct.
+When you merge configs, you're trusting the merge order is deterministic.
+When you trace code, you're trusting the bytecode hashing is stable.
 
-Run tests locally:
+Ato has zero tolerance for regressions.
+
+Tests cover every module — ADict, Scope, MultiScope, SQLTracker, HyperBand — and every edge case we've encountered in production use.
+
 ```bash
-python -m pytest unit_tests/
+python -m pytest unit_tests/  # Run locally. Always passes.
 ```
+
+**If a test fails, the release doesn't ship. Period.**
 
 ---
 
@@ -1089,13 +1123,21 @@ Ato is designed to **compose** with existing tools, not replace them.
 - Built-in Hyperband
 - Or compose with Optuna/Ray Tune — Ato's configs work with any optimizer
 
-### Five Capabilities Other Tools Don't Provide
+### What Makes Ato Different
 
-1. **Three-dimensional reproducibility** — Track config (structural hash), code (trace), and output (runtime_trace) in one system
-2. **Config chaining (`chain_with`)** — Explicit dependency management between configs
-3. **MultiScope** — True namespace isolation with independent priority systems
-4. **`manual` command** — Visualize exact config merge order for debugging
-5. **Content-based versioning** — No timestamps, no git commits — just fingerprints of what actually ran
+Not features. **Architectural decisions.**
+
+1. **Three-dimensional reproducibility** — Config structure + code bytecode + runtime output. Most tools track configs. Ato tracks causality.
+
+2. **Content-based versioning** — No timestamps. No git commits. Just SHA256 fingerprints of what ran. Reproducibility becomes queryable.
+
+3. **Namespace isolation** — MultiScope gives each team its own priority system. No more `model_lr` vs `data_lr` prefixes.
+
+4. **Explicit dependencies** — Config chaining (`chain_with`) makes prerequisites visible. No more forgetting to call `base_setup`.
+
+5. **Debuggable merging** — The `manual` command shows exactly how configs merged. Config bugs become traceable.
+
+These aren't plugin features. They're **how Ato is built**.
 
 ### When to Use Ato
 
