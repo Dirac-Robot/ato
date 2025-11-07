@@ -2,25 +2,44 @@
 
 ## A minimal, composable config layer for Python and ML pipelines
 
-I didn’t know there was a great tool called Hydra.
-So I built something a bit simpler, a bit more opinionated,
-and maybe a bit more compatible — something that could also work nicely
-with amazing tools like Hydra, WandB, or MLflow.
+Ato is a minimal, composable config system for Python and ML pipelines.  
+It lets you **chain**, **merge**, and **freeze** modular configs,  
+so you can move seamlessly from **dynamic experiments** to **static production builds**.
 
-Even though I didn’t know these tools at the time,
-I deliberately designed for compatibility —
-and later, after learning about Hydra and others,
-I added explicit interop layers.
-Because I know how tempting — and exhausting —
-it can be to move from a familiar environment
-to a new, more attractive one.
-
-So — there’s no need to compete.
-Just try it once.
-This tool won’t make you tired.  
-It might even feel a little kind.  
+Unlike heavy frameworks, Ato keeps everything **transparent** and **Pythonic** —  
+you can use it alongside tools like Hydra, WandB, or MLflow without friction.  
+It’s built for people who prefer clarity over magic.
 
 After all, *Ato* was never built to impress — it was built to stay.
+
+<details>
+<summary><strong>Developer’s Note</strong></summary>
+
+I didn’t know there was a great tool called Hydra.  
+So I built something a bit simpler, a bit more opinionated,  
+and maybe a bit more compatible — something that could also work nicely  
+with amazing tools like Hydra, WandB, or MLflow.
+
+Even though I didn’t know these tools at the time,  
+I deliberately designed for compatibility —  
+and later, after learning about Hydra and others,  
+I added explicit interop layers.  
+Because I know how tempting — and exhausting —  
+it can be to move from a familiar environment  
+to a new, more attractive one.
+
+I’ve been the only user so far —  
+not because I wanted to hide it,  
+but because I never had anyone around  
+who could really tell me if it was good enough.  
+Maybe this is the right time to find out.
+
+So — there’s no need to compete.  
+Just *try it once.*  
+This tool won’t make you tired.  
+It might even feel a little kind.
+
+</details>
 
 ---
 
