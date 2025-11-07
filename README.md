@@ -78,6 +78,7 @@ if __name__ == '__main__':
   - [Config Chaining](#config-chaining)
   - [MultiScope: Namespace Isolation](#multiscope-namespace-isolation)
   - [Config Documentation & Debugging](#configuration-documentation--debugging)
+  - [Code Versioning with Traces](#code-versioning-with-traces)
 - [SQL Tracker: Experiment Tracking](#sql-tracker-experiment-tracking)
 - [Hyperparameter Optimization](#hyperparameter-optimization)
 - [Best Practices](#best-practices)
@@ -485,6 +486,101 @@ def train(config):
 if __name__ == '__main__':
     parser.parse_args()  # Merges argparse with scope
     train()
+```
+
+### Code Versioning with Traces
+
+Track code changes automatically using **static traces** (code fingerprints) and **runtime traces** (execution fingerprints).
+
+#### Static Tracing
+
+Track when function code changes:
+
+```python
+from ato.scope import Scope
+
+scope = Scope()
+
+@scope.observe(default=True)
+def config(config):
+    config.model = 'resnet50'
+    config.lr = 0.001
+
+@scope.trace(trace_id='model_forward')
+def train(config):
+    model = create_model(config.model)
+    # Training code here
+    return final_loss
+
+if __name__ == '__main__':
+    train()
+```
+
+**What this does:**
+- Generates a hash of the function's bytecode, constants, and structure
+- Stored in SQLLogger as a **static fingerprint**
+- Changes to the function code change the fingerprint
+- Use `SQLFinder.get_trace_statistics()` to see how many code versions exist
+
+#### Runtime Tracing
+
+Track when function **outputs** change:
+
+```python
+@scope.runtime_trace(
+    trace_id='model_forward',
+    init_fn=lambda: print("Starting training"),
+    inspect_fn=lambda result: result['loss']  # Track only loss, not full result
+)
+def train(config):
+    # Training code
+    return {'loss': 0.123, 'accuracy': 0.95, 'model_state': {...}}
+```
+
+**Parameters:**
+- `trace_id`: Identifier for this trace
+- `init_fn`: Optional function to run before execution
+- `inspect_fn`: Optional function to extract what to hash from results
+
+**What this does:**
+- Executes the function normally
+- Extracts relevant data via `inspect_fn` (or uses full result)
+- Generates SHA256 hash of the pickled output
+- Stores as **runtime fingerprint** in SQLLogger
+
+**Use cases:**
+- Detect when model outputs change (data drift, code bugs)
+- Track reproducibility across runs
+- Alert when model behavior diverges unexpectedly
+
+**Combined with SQL Tracker:**
+
+```python
+from ato.scope import Scope
+from ato.db_routers.sql.manager import SQLLogger, SQLFinder
+
+scope = Scope()
+
+@scope.observe(default=True)
+def config(config):
+    config.experiment = {'project_name': 'my_project', 'sql': {'db_path': 'sqlite:///exp.db'}}
+
+@scope.trace(trace_id='train_step')
+def train(config):
+    logger = SQLLogger(config)
+    run_id = logger.run()
+
+    # Training code with traced functions
+    loss = train_model()
+
+    logger.finish(status='completed')
+    return loss
+
+# Query trace statistics
+finder = SQLFinder(config)
+stats = finder.get_trace_statistics('my_project', trace_id='train_step')
+print(f"This function has {stats['static_trace_versions']} code versions")
+print(f"Runtime fingerprint versions: {stats['runtime_trace_versions']}")
 ```
 
 ---
@@ -934,12 +1030,13 @@ Ato is designed to **compose** with existing tools, not replace them.
 - Built-in Hyperband
 - Or compose with Optuna/Ray Tune — Ato's configs work with any optimizer
 
-### Four Capabilities Other Tools Don't Provide
+### Five Capabilities Other Tools Don't Provide
 
 1. **Config chaining (`chain_with`)** — Explicit dependency management between configs
 2. **MultiScope** — True namespace isolation with independent priority systems
 3. **`manual` command** — Visualize exact config merge order for debugging
-4. **Structural hashing** — Track when experiment **architecture** changes, not just values
+4. **Code versioning (`trace`/`runtime_trace`)** — Automatic static and runtime fingerprinting
+5. **Structural hashing** — Track when experiment **architecture** changes, not just values
 
 ### When to Use Ato
 
