@@ -244,6 +244,85 @@ class ScopeUnitTest(unittest.TestCase):
             'test_view-test_chained_view-test_chained_chained_view-learning_rate=0.1-factor=2'
         )
 
+    def test_trace(self):
+        scope = self.scope
+
+        @scope.trace(trace_id='test_trace_id')
+        def test_trace_id(unit_test_config):
+            return unit_test_config.learning_rate
+
+        result = test_trace_id()
+        self.assertEqual(result, 0.1)
+        self.assertIn('test_trace_id', scope._traced_data.fingerprints)
+
+        @scope.trace(trace_id='test_fingerprint')
+        def test_fingerprint(unit_test_config):
+            x = unit_test_config.learning_rate
+            return x
+
+        fingerprint_1 = scope._traced_data.fingerprints['test_fingerprint']
+
+        @scope.trace(trace_id='test_fingerprint')
+        def test_fingerprint(unit_test_config):
+            # this is comment
+            x = unit_test_config.learning_rate
+            return x
+
+        fingerprint_2 = scope._traced_data.fingerprints['test_fingerprint']
+        self.assertEqual(fingerprint_1, fingerprint_2)
+
+        @scope.trace(trace_id='test_fingerprint')
+        def test_fingerprint(unit_test_config):
+            x = unit_test_config.learning_rate*2
+            return x
+
+        fingerprint_3 = scope._traced_data.fingerprints['test_fingerprint']
+        self.assertNotEqual(fingerprint_1, fingerprint_3)
+
+        @scope.trace(trace_id='test_fingerprint')
+        def test_fingerprint(unit_test_config):
+            x = unit_test_config.learning_rate * 2
+            return x
+
+        fingerprint_4 = scope._traced_data.fingerprints['test_fingerprint']
+        self.assertNotEqual(fingerprint_1, fingerprint_4)
+        self.assertEqual(fingerprint_3, fingerprint_4)
+
+        @scope.trace(trace_id='test_fingerprint')
+        def test_fingerprint(unit_test_config):
+            from math import sqrt, log
+            x = unit_test_config.learning_rate*sqrt(2)/log(2)
+            return x
+
+        fingerprint_5 = scope._traced_data.fingerprints['test_fingerprint']
+
+        @scope.trace(trace_id='test_fingerprint')
+        def test_fingerprint(unit_test_config):
+            from math import log, sqrt
+            x = unit_test_config.learning_rate*sqrt(2)/log(2)
+            return x
+
+        fingerprint_6 = scope._traced_data.fingerprints['test_fingerprint']
+        self.assertEqual(fingerprint_5, fingerprint_6)
+
+    def test_runtime_trace(self):
+        scope = self.scope
+        init_called = []
+
+        def init_fn():
+            init_called.append(True)
+
+        def inspect_fn(result):
+            return {'result': result, 'type': type(result).__name__}
+
+        @scope.runtime_trace(init_fn=init_fn, inspect_fn=inspect_fn, trace_id='runtime_trace_test')
+        def test_func(unit_test_config):
+            return unit_test_config.learning_rate*2
+
+        test_func()
+        self.assertTrue(len(init_called) > 0)
+        self.assertIn('runtime_trace_test', scope._traced_data.fingerprints)
+
 
 if __name__ == "__main__":
     unittest.main()

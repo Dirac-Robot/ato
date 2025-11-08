@@ -1,8 +1,10 @@
 import argparse
+import ast
 import hashlib
 import inspect
 import pickle
 import sys
+import textwrap
 import uuid
 import warnings
 from contextlib import contextmanager
@@ -12,6 +14,7 @@ from ato.adict import ADict
 from inspect import currentframe, getframeinfo
 
 from ato.parser import parse_command
+from ato.trace import Canon
 
 
 # safe compile
@@ -72,6 +75,7 @@ def add_func_to_scope(scope, field=None, priority=0, lazy=False, default=False, 
     def decorator(func):
         _add_func_to_scope(scope, func, field, priority, lazy, default, chain_with)
         return func
+
     return decorator
 
 
@@ -99,6 +103,7 @@ def add_func_to_multi_scope(scopes, field=None, priority=0, lazy=False, default=
         for scope in scopes:
             _add_func_to_scope(scope, func, field, priority, lazy, default, chain_with)
         return func
+
     return decorator
 
 
@@ -177,19 +182,37 @@ def _get_func_trace_id(func):
     return f'{func.__module__}.{func.__qualname__}'
 
 
+def _fine_line_numbers(frame_info, filename, line):
+    with open(filename, 'r', encoding='utf-8') as f:
+        src = f.read()
+    tree = ast.parse(src, filename=filename)
+    target_node = None
+    target_start_line = None
+    target_end_line = None
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.With, ast.AsyncWith)):
+            start_line = getattr(node, 'lineno', None)
+            end_line = getattr(node, 'end_lineno', None)
+            if start_line is not None and end_line is not None and start_line <= line <= end_line:
+                if target_node is None or (end_line-start_line < target_end_line-target_start_line):
+                    target_node = node
+                    target_start_line = start_line
+                    target_end_line = end_line
+    if target_node is None:
+        target_start_line = getattr(frame_info.positions, 'lineno', line)
+        target_end_line = getattr(frame_info.positions, 'end_lineno', line)
+    return target_start_line, target_end_line
+
+
 def _generate_func_fingerprint(func, trace_id=None):
-    code_obj = func.__code__
-    code_info = (
-        code_obj.co_code,
-        code_obj.co_consts,
-        code_obj.co_names,
-        code_obj.co_varnames,
-        code_obj.co_filename,
-        code_obj.co_name,
-        code_obj.co_firstlineno
-    )
+    src = inspect.getsource(func)
+    src = textwrap.dedent(src)
+    tree = ast.parse(src)
+    tree = Canon().visit(tree)
+    ast.fix_missing_locations(tree)
+    canonical = ast.dump(tree, annotate_fields=True, include_attributes=False)
     trace_id = _get_func_trace_id(func) if trace_id is None else trace_id
-    code_hash = hashlib.sha256(repr(code_info).encode()).hexdigest()
+    code_hash = hashlib.sha256(canonical.encode('utf-8')).hexdigest()
     return ADict(**{trace_id: code_hash})
 
 
@@ -241,6 +264,7 @@ class Scope:
         def decorator(func):
             self._traced_data.fingerprints.update(_generate_func_fingerprint(func, trace_id=trace_id))
             return self(func)
+
         return decorator
 
     def runtime_trace(self, init_fn=None, inspect_fn=None, trace_id=None):
@@ -252,10 +276,12 @@ class Scope:
                 results = inspect_results = self(func)(*args, **kwargs)
                 if inspect_fn is not None:
                     inspect_results = inspect_fn(results)
-                trace_id = _get_func_trace_id(func) if trace_id is not None else trace_id
+                trace_id = _get_func_trace_id(func) if trace_id is None else trace_id
                 inspect_hash = hashlib.sha256(pickle.dumps(inspect_results)).hexdigest()
                 self._traced_data.fingerprints.update({trace_id: inspect_hash})
+
             return inner
+
         return decorator
 
     def register(self):
@@ -420,6 +446,7 @@ class Scope:
                 if self.mode == 'ON':
                     args, kwargs = self.get_config_updated_arguments(func, *args, **kwargs)
                 return func(*args, **kwargs)
+
         return inner
 
     def __call__(self, func):
@@ -431,10 +458,12 @@ class Scope:
     def convert_argparse_to_scope(self):
         args = self.views['_argparse'].config
         code = f"def argparse({self.name}):\n"
-        code += '\n'.join([
-            f'    {self.name}.{key} = '+(f"'{value}'" if isinstance(value, str) else f'{value}')
-            for key, value in args.items()
-        ])
+        code += '\n'.join(
+            [
+                f'    {self.name}.{key} = '+(f"'{value}'" if isinstance(value, str) else f'{value}')
+                for key, value in args.items()
+            ]
+        )
         return code
 
     @classmethod
@@ -456,12 +485,12 @@ class Scope:
             frame = currentframe().f_back.f_back
             frame_info = getframeinfo(frame)
             file_name = frame_info.filename
-            start = frame_info.positions.lineno
-            end = frame_info.positions.end_lineno
-            with open(file_name, 'r') as f:
-                inner_ctx_lines = list(f.readlines())[start:end]
+            line = frame.f_lineno
+            start_line, end_line = _fine_line_numbers(frame_info, file_name, line)
+            with open(file_name, 'r', encoding='utf-8') as f:
+                inner_ctx_lines = list(f.readlines())[start_line:end_line]
             ctx_name = f"_lazy_context_{str(uuid.uuid4()).replace('-', '_')}"
-            inner_ctx_lines = [f'def {ctx_name}({scope.name}):']+inner_ctx_lines
+            inner_ctx_lines = [f'def {ctx_name}({scope.name}):\n']+inner_ctx_lines
             global_vars = frame.f_globals
             local_vars = frame.f_locals
             exec(compile('\n'.join(inner_ctx_lines), '<string>', 'exec'), global_vars, local_vars)
@@ -489,4 +518,5 @@ class MultiScope:
                     args, kwargs = scope.get_config_updated_arguments(func, *args, **kwargs)
                 scope.apply()
             return func(*args, **kwargs)
+
         return decorator

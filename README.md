@@ -305,6 +305,8 @@ python train.py multi_node_training
 
 ### Lazy Evaluation
 
+**Note:** Lazy evaluation features require Python 3.8 or higher.
+
 Sometimes you need configs that depend on other values set via CLI:
 
 ```python
@@ -655,22 +657,107 @@ for code_hash, runs in by_code_version.items():
 
 **Result:** Code version `abc123` performs 5% better than `def456`. You can now trace exactly which commit introduced the change and why performance improved.
 
+#### How Tracing Works
+
+**Static Tracing (`@scope.trace`):**
+
+Generates a fingerprint of the function's **logic**, not its name or formatting:
+
+```python
+# These three functions have IDENTICAL fingerprints
+@scope.trace(trace_id='train_step')
+def train_v1(config):
+    loss = model(data)
+    return loss
+
+@scope.trace(trace_id='train_step')
+def train_v2(config):
+    # Added comments
+    loss = model(data)  # Compute loss
+    return loss
+
+@scope.trace(trace_id='train_step')
+def completely_different_name(config):
+    loss=model(data)  # Different whitespace
+    return loss
+```
+
+All three produce the **same fingerprint** because the underlying logic is identical. Comments, whitespace, and function names are ignored.
+
+**Why this matters:**
+- Refactoring doesn't create "new" code versions
+- Safe renaming — fingerprint tracks behavior, not syntax
+- Detects actual logic changes, not cosmetic edits
+
+**When fingerprints change:**
+
+```python
+@scope.trace(trace_id='train_step')
+def train_v1(config):
+    loss = model(data)
+    return loss
+
+@scope.trace(trace_id='train_step')
+def train_v2(config):
+    loss = model(data) * 2  # ← Logic changed!
+    return loss
+```
+
+Now fingerprints differ — you've changed the actual computation.
+
+**Runtime Tracing (`@scope.runtime_trace`):**
+
+Tracks what the function **produces**, not what it does:
+
+```python
+@scope.runtime_trace(
+    trace_id='predictions',
+    inspect_fn=lambda preds: preds[:100]  # Track first 100 predictions
+)
+def evaluate(model, data):
+    return model.predict(data)
+```
+
+Even if code hasn't changed, if predictions differ, the runtime fingerprint changes.
+
 #### Static vs Runtime Tracing
 
 **Use `@scope.trace()` when:**
 - You want to track code changes automatically
 - You're refactoring and want to isolate performance impact
 - You need to audit "which code produced this result?"
+- You want to ignore cosmetic changes (comments, whitespace, renaming)
 
 **Use `@scope.runtime_trace()` when:**
 - You want to detect **silent failures** (code unchanged, output wrong)
 - You're debugging non-determinism
 - You need to verify model behavior across versions
+- You care about what the function produces, not how it's written
 
 **Use both when:**
 - Building production ML systems
 - Running long-term research experiments
 - Multiple people modifying the same codebase
+
+**Example: Catching refactoring bugs**
+
+```python
+# Original implementation
+@scope.trace(trace_id='forward_pass')
+def forward(model, x):
+    return model(x)
+
+# After refactoring (logic preserved)
+@scope.trace(trace_id='forward_pass')
+def forward(model, x):
+    # Extract features
+    features = model.backbone(x)
+    # Classification head
+    logits = model.head(features)
+    return logits
+```
+
+If these have **different fingerprints**, something went wrong in the refactoring — the logic changed when it shouldn't have. If they have the **same fingerprint**, the refactoring is safe.
 
 ---
 
@@ -1060,7 +1147,7 @@ if __name__ == '__main__':
 
 ## Requirements
 
-- Python >= 3.7
+- Python >= 3.7 (Python >= 3.8 required for lazy evaluation features)
 - SQLAlchemy (for SQL Tracker)
 - PyYAML, toml (for config serialization)
 
