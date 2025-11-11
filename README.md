@@ -988,10 +988,12 @@ if __name__ == '__main__':
 
 ### Does Ato replace Hydra?
 
-No. Hydra is excellent at config composition.
-Ato is a layer that explains **why** results differ — it observes and fingerprints the final merged config.
+No. Hydra and Ato have different config management philosophies.
 
-Use them together: Hydra for composition, Ato for causality.
+Hydra focuses on hierarchical composition and overrides.
+Ato focuses on priority-based reasoning and causality tracking.
+
+Use them together or separately — both work.
 
 ### Does Ato conflict with MLflow/W&B?
 
