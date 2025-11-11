@@ -710,13 +710,41 @@ Now fingerprints differ — you've changed the actual computation.
 Tracks what the function **produces**, not what it does:
 
 ```python
-@scope.runtime_trace(
-    trace_id='predictions',
-    inspect_fn=lambda preds: preds[:100]  # Track first 100 predictions
-)
+import numpy as np
+
+# Basic: Track full output
+@scope.runtime_trace(trace_id='predictions')
 def evaluate(model, data):
     return model.predict(data)
+
+# With init_fn: Fix randomness for reproducibility
+@scope.runtime_trace(
+    trace_id='predictions',
+    init_fn=lambda: np.random.seed(42)  # Initialize before execution
+)
+def evaluate_with_dropout(model, data):
+    return model.predict(data)  # Now deterministic
+
+# With inspect_fn: Track specific parts of output
+@scope.runtime_trace(
+    trace_id='predictions',
+    inspect_fn=lambda preds: preds[:100]  # Only hash first 100 predictions
+)
+def evaluate_large_output(model, data):
+    return model.predict(data)
+
+# Advanced: Type-only checking (ignore values)
+@scope.runtime_trace(
+    trace_id='predictions',
+    inspect_fn=lambda preds: type(preds).__name__  # Track output type only
+)
+def evaluate_structure(model, data):
+    return model.predict(data)
 ```
+
+**Parameters:**
+- `init_fn`: Optional function called before execution (e.g., seed fixing, device setup)
+- `inspect_fn`: Optional function to extract/filter what to track (e.g., first N items, specific fields, types only)
 
 Even if code hasn't changed, if predictions differ, the runtime fingerprint changes.
 
@@ -745,19 +773,29 @@ Even if code hasn't changed, if predictions differ, the runtime fingerprint chan
 # Original implementation
 @scope.trace(trace_id='forward_pass')
 def forward(model, x):
-    return model(x)
+    out = model(x)
+    return out
 
-# After refactoring (logic preserved)
+# Safe refactoring: Added comments, changed variable name, different whitespace
+@scope.trace(trace_id='forward_pass')
+def forward(model,x):
+    # Forward pass through model
+    result=model(x)  # No spaces
+    return result
+```
+
+These have **the same fingerprint** because the underlying logic is identical — only cosmetic changes (comments, whitespace, variable names).
+
+```python
+# Unsafe refactoring: Logic changed
 @scope.trace(trace_id='forward_pass')
 def forward(model, x):
-    # Extract features
-    features = model.backbone(x)
-    # Classification head
+    features = model.backbone(x)  # Now calling backbone + head separately!
     logits = model.head(features)
     return logits
 ```
 
-If these have **different fingerprints**, something went wrong in the refactoring — the logic changed when it shouldn't have. If they have the **same fingerprint**, the refactoring is safe.
+This has a **different fingerprint** — the logic changed. If you expected them to be equivalent but they have different fingerprints, you've caught a refactoring bug.
 
 ---
 
