@@ -248,6 +248,7 @@ class ScopeUnitTest(unittest.TestCase):
         scope = self.scope
 
         @scope.trace(trace_id='test_trace_id')
+        @scope
         def test_trace_id(unit_test_config):
             return unit_test_config.learning_rate
 
@@ -256,6 +257,7 @@ class ScopeUnitTest(unittest.TestCase):
         self.assertIn('test_trace_id', scope._traced_data.fingerprints)
 
         @scope.trace(trace_id='test_fingerprint')
+        @scope
         def test_fingerprint(unit_test_config):
             x = unit_test_config.learning_rate
             return x
@@ -263,6 +265,7 @@ class ScopeUnitTest(unittest.TestCase):
         fingerprint_1 = scope._traced_data.fingerprints['test_fingerprint']
 
         @scope.trace(trace_id='test_fingerprint')
+        @scope
         def test_fingerprint(unit_test_config):
             # this is comment
             x = unit_test_config.learning_rate
@@ -272,6 +275,7 @@ class ScopeUnitTest(unittest.TestCase):
         self.assertEqual(fingerprint_1, fingerprint_2)
 
         @scope.trace(trace_id='test_fingerprint')
+        @scope
         def test_fingerprint(unit_test_config):
             x = unit_test_config.learning_rate*2
             return x
@@ -280,6 +284,7 @@ class ScopeUnitTest(unittest.TestCase):
         self.assertNotEqual(fingerprint_1, fingerprint_3)
 
         @scope.trace(trace_id='test_fingerprint')
+        @scope
         def test_fingerprint(unit_test_config):
             x = unit_test_config.learning_rate * 2
             return x
@@ -289,6 +294,7 @@ class ScopeUnitTest(unittest.TestCase):
         self.assertEqual(fingerprint_3, fingerprint_4)
 
         @scope.trace(trace_id='test_fingerprint')
+        @scope
         def test_fingerprint(unit_test_config):
             from math import sqrt, log
             x = unit_test_config.learning_rate*sqrt(2)/log(2)
@@ -297,6 +303,7 @@ class ScopeUnitTest(unittest.TestCase):
         fingerprint_5 = scope._traced_data.fingerprints['test_fingerprint']
 
         @scope.trace(trace_id='test_fingerprint')
+        @scope
         def test_fingerprint(unit_test_config):
             from math import log, sqrt
             x = unit_test_config.learning_rate*sqrt(2)/log(2)
@@ -316,6 +323,7 @@ class ScopeUnitTest(unittest.TestCase):
             return {'result': result, 'type': type(result).__name__}
 
         @scope.runtime_trace(init_fn=init_fn, inspect_fn=inspect_fn, trace_id='runtime_trace_test')
+        @scope
         def test_func(unit_test_config):
             return unit_test_config.learning_rate*2
 

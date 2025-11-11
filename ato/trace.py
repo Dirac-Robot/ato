@@ -14,8 +14,9 @@ class Canon(ast.NodeTransformer):
         return node
 
     def visit_ImportFrom(self, node):
-        if node.names:
-            node.names = sorted(node.names, key=lambda n: (n.name, n.asname or ''))
+        names = node.names
+        if names:
+            node.names = sorted(names, key=lambda name: (name.name, name.asname or ''))
         return node
 
     def visit_Dict(self, node):

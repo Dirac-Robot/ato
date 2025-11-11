@@ -263,7 +263,7 @@ class Scope:
     def trace(self, trace_id=None):
         def decorator(func):
             self._traced_data.fingerprints.update(_generate_func_fingerprint(func, trace_id=trace_id))
-            return self(func)
+            return func
 
         return decorator
 
@@ -273,7 +273,7 @@ class Scope:
                 nonlocal trace_id
                 if init_fn is not None:
                     init_fn()
-                results = inspect_results = self(func)(*args, **kwargs)
+                results = inspect_results = func(*args, **kwargs)
                 if inspect_fn is not None:
                     inspect_results = inspect_fn(results)
                 trace_id = _get_func_trace_id(func) if trace_id is None else trace_id
