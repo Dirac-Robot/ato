@@ -1100,3 +1100,7 @@ python -m pytest unit_tests/
 ## License
 
 MIT License
+
+---
+
+※ I used claude only for generating some missing test codes and README.
