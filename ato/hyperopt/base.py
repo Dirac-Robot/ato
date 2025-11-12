@@ -4,7 +4,15 @@ from copy import deepcopy as dcp
 from itertools import product
 
 import numpy as np
-import torch.distributed as dist
+
+try:
+    import torch
+    import torch.distributed as dist
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
+    dist = None
 
 from ato.adict import ADict
 
@@ -30,6 +38,8 @@ class HyperOpt:
 
 class DistributedMixIn:
     def __init__(self, rank=0, world_size=1, backend='pytorch'):
+        if not TORCH_AVAILABLE:
+            raise RuntimeError('DistributedMixin requires PyTorch to be installed.')
         self.rank = rank
         self.world_size = world_size
         self.backend = backend
