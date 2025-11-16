@@ -1,183 +1,85 @@
-# Ato: A Thin Operating Layer
+# Ato: A Scope-Based Config Layer for ML
 
-**Minimal reproducibility for ML.**
-Tracks config structure, code, and runtime so you can explain why runs differ — without a platform.
+**Describe experiments as composable config views. Get reproducibility for free.**
+
+Ato lets you build configs from a sequence of "views" (Scopes) with explicit priorities, lazy evaluation, and Pythonic CLI — then fingerprints configs, code, and runtime so you can explain why runs diverge.
 
 ```bash
 pip install ato
 ```
 
-```python
-# Your experiment breaks. Here's how to debug it:
-python train.py manual  # See exactly how configs merged
-finder.get_trace_statistics('my_project', 'train_step')  # See which code versions ran
-finder.find_similar_runs(run_id=123)  # Find experiments with same structure
-```
-
-**One question:** "Why did this result change?"
-Ato fingerprints config structure, function logic, and runtime outputs to answer it.
-
----
-
-## What Ato Is
-
-Ato is a thin layer that fingerprints your config structure, function logic, and runtime outputs.
-
-It doesn't replace your stack; it sits beside it to answer one question: **"Why did this result change?"**
-
-Three pieces, zero coupling:
-
-1. **ADict** — Structural hashing for configs (tracks architecture changes, not just values)
-2. **Scope** — Priority-based config merging with reasoning and code fingerprinting
-3. **SQLTracker** — Local-first experiment tracking in SQLite (zero setup, zero servers)
-
-Each works alone. Together, they explain why experiments diverge.
-
-**Config is not logging — it's reasoning.**
-Ato makes config merge order, priority, and causality visible.
-
----
-
-## Config Superpowers (That Make Reproducibility Real)
-
-These aren't features. They're how Ato is built:
-
-| Capability | What It Does | Why It Matters |
-|------------|--------------|----------------|
-| **Structural hashing** | Hash based on keys + types, not values | Detect when experiment **architecture** changes, not just hyperparameters |
-| **Priority/merge reasoning** | Explicit merge order with `manual` inspection | See **why** a config value won — trace the entire merge path |
-| **Namespace isolation** | Each scope owns its keys | Team/module collisions are impossible — no need for `model_lr` vs `data_lr` prefixes |
-| **Code fingerprinting** | SHA256 of function bytecode, not git commits | Track **logic changes** automatically — refactoring doesn't create false versions |
-| **Runtime fingerprinting** | SHA256 of actual outputs | Detect silent failures when code is unchanged but behavior differs |
-
-**No dashboards. No servers. No ecosystems.**
-Just fingerprints and SQLite.
-
----
-
-## Works With Your Stack (Keep Hydra, MLflow, W&B, ...)
-
-Ato doesn't compete with your config system or tracking platform.
-It **observes and fingerprints** what you already use.
-
-**Compose configs however you like:**
-- Load Hydra/OmegaConf configs → Ato fingerprints the final merged structure
-- Use argparse → Ato observes and integrates seamlessly
-- Import OpenMMLab configs → Ato handles `_base_` inheritance automatically
-- Mix YAML/JSON/TOML → Ato is format-agnostic
-
-**Track experiments however you like:**
-- Log to MLflow/W&B for dashboards → Ato tracks causality in local SQLite
-- Use both together → Cloud tracking for metrics, Ato for "why did this change?"
-- Or just use Ato → Zero-setup local tracking with full history
-
-**Ato is a complement, not a replacement.**
-No migration required. No lock-in. Add it incrementally.
-
----
-
-## When to Use Ato
-
-Use Ato when:
-
-- **Experiments diverge occasionally** and you need to narrow down the cause
-- **Config include/override order** changes results in unexpected ways
-- **"I didn't change the code but results differ"** happens repeatedly (dependency/environment/bytecode drift)
-- **Multiple people modify configs** and you need to trace who set what and why
-- **You're debugging non-determinism** and need runtime fingerprints to catch silent failures
-
-**Ato is for causality, not compliance.**
-If you need audit trails or dashboards, keep using your existing tracking platform.
-
----
-
-## Non-Goals
-
-Ato is **not**:
-
-- A pipeline orchestrator (use Airflow, Prefect, Luigi, ...)
-- A hyperparameter scheduler (use Optuna, Ray Tune, ...)
-- A model registry (use MLflow Model Registry, ...)
-- An experiment dashboard (use MLflow, W&B, TensorBoard, ...)
-- A dataset versioner (use DVC, Pachyderm, ...)
-
-**Ato has one job:** Explain why results changed.
-Everything else belongs in specialized tools.
-
----
-
-## Incremental Adoption (No Migration Required)
-
-You don't need to replace anything. Add Ato in steps:
-
-**Step 1: Fingerprint config structure (zero code changes)**
-```python
-from ato.adict import ADict
-
-config = ADict(lr=0.001, batch_size=32, model='resnet50')
-print(config.get_structural_hash())  # Tracks structure, not values
-```
-
-**Step 2: Add code fingerprinting to key functions**
-```python
-from ato.scope import Scope
-
-scope = Scope()
-
-@scope.trace(trace_id='train_step')
-@scope
-def train_epoch(config):
-    # Your training code
-    pass
-```
-
-**Step 3: Add runtime fingerprinting to outputs**
-```python
-@scope.runtime_trace(
-    trace_id='predictions',
-    init_fn=lambda: np.random.seed(42),  # Fix randomness
-    inspect_fn=lambda preds: preds[:100]  # Track first 100
-)
-def evaluate(model, data):
-    return model.predict(data)
-```
-
-**Step 4: Inspect config merge order**
 ```bash
-python train.py manual  # See exactly how configs merged
+# Run with different config compositions
+python train.py                      # Default views
+python train.py high_lr              # Apply high_lr view
+python train.py high_lr long_run     # Chain multiple views
+python train.py manual               # See exactly how configs merged
 ```
 
-**Step 5: Track experiments locally**
-```python
-from ato.db_routers.sql.manager import SQLLogger
-
-logger = SQLLogger(config)
-run_id = logger.run(tags=['baseline'])
-# Your training loop
-logger.log_metric('loss', loss, step=epoch)
-logger.finish(status='completed')
-```
+**One core idea:** Config is not configuration files. Config is **reasoning** — a sequence of transformations with priorities, dependencies, and causality.
 
 ---
 
-## Quick Start
+## What Ato Is Really For
 
-**Three lines to tracked experiments:**
+Ato is a thin layer for **config reasoning** with reproducibility built in.
+
+**Describe config as views:**
+- Small functions or dicts that modify a shared config with explicit priorities
+- Chain dependencies: `chain_with=['base', 'gpu']` auto-applies prerequisites
+- Lazy evaluation: compute config values **after** CLI args are applied
+
+**Drive everything from a Pythonic CLI:**
+- `python train.py baseline long_run augment` applies views in priority order
+- Override anything: `python train.py lr=0.01 batch_size=64`
+- No YAML files required (but you can load them if you want)
+
+**Inspect "who changed what":**
+- `python train.py manual` shows exact view application order
+- Built-in documentation system for config keys
+- Full causality trace: see which view set which value and why
+
+**Optionally fingerprint code and runtime:**
+- Structural hashing: track when experiment **architecture** changes (not just values)
+- Code fingerprints: SHA256 of function logic (ignores comments/whitespace)
+- Runtime fingerprints: SHA256 of actual outputs (catches silent failures)
+
+**Config is reasoning, not logging.** Ato makes merge order, priority, and causality visible.
+
+---
+
+## Quick Start: Scope-Based Config
 
 ```python
 from ato.scope import Scope
+from ato.adict import ADict
 
 scope = Scope()
 
 @scope.observe(default=True)
-def config(config):
-    config.lr = 0.001
-    config.batch_size = 32
+def defaults(config):
+    config.lr = 1e-3
+    config.epochs = 50
     config.model = 'resnet50'
+
+@scope.observe(priority=1)
+def high_lr(config):
+    config.lr = 3e-3
+
+@scope.observe(priority=2, chain_with='high_lr')
+def long_run(config):
+    config.epochs = 200
+
+@scope.manual
+def docs(manual):
+    manual.lr = 'Learning rate for optimizer'
+    manual.epochs = 'Number of training epochs'
+    manual.model = 'Model architecture'
 
 @scope
 def train(config):
-    print(f"Training {config.model} with lr={config.lr}")
+    print(f"Training {config.model} for {config.epochs} epochs with lr={config.lr}")
+    # Your training code here
 
 if __name__ == '__main__':
     train()
@@ -185,50 +87,29 @@ if __name__ == '__main__':
 
 **Run it:**
 ```bash
-python train.py                          # Uses defaults
-python train.py lr=0.01                  # Override from CLI
-python train.py manual                   # See config merge order
+python train.py                    # lr=1e-3, epochs=50
+python train.py high_lr            # lr=3e-3, epochs=50
+python train.py long_run           # lr=3e-3, epochs=200 (chain_with auto-applies high_lr)
+python train.py lr=0.01            # Override from CLI
+python train.py manual             # See view application order + docs
 ```
 
----
+**What just happened:**
+1. **Views** are functions that modify config
+2. **Priorities** control merge order (higher = applied later)
+3. **Dependencies** (`chain_with`) auto-apply prerequisite views
+4. **CLI** can invoke views or override values directly
+5. **Manual** shows exactly how the config was built
 
-## Table of Contents
-
-- [ADict: Structural Hashing](#adict-structural-hashing)
-- [Scope: Config Reasoning](#scope-config-reasoning)
-  - [Priority-based Merging](#priority-based-merging)
-  - [Config Chaining](#config-chaining)
-  - [Lazy Evaluation](#lazy-evaluation)
-  - [MultiScope: Namespace Isolation](#multiscope-namespace-isolation)
-  - [Config Documentation & Debugging](#config-documentation--debugging)
-  - [Code Fingerprinting](#code-fingerprinting)
-  - [Runtime Fingerprinting](#runtime-fingerprinting)
-- [SQL Tracker: Local Experiment Tracking](#sql-tracker-local-experiment-tracking)
-- [Hyperparameter Optimization](#hyperparameter-optimization)
-- [Best Practices](#best-practices)
-- [FAQ](#faq)
-- [Quality Signals](#quality-signals)
-- [Contributing](#contributing)
+This is **config reasoning**, not config loading.
 
 ---
 
-## ADict: Structural Hashing
+## Reproducibility as a Side Effect
 
-`ADict` tracks when experiment **architecture** changes, not just hyperparameter values.
+Once you have Scope-based config reasoning, reproducibility becomes trivial.
 
-### Core Capabilities
-
-| Feature | Description |
-|---------|-------------|
-| **Structural Hashing** | Hash based on keys + types → detect architecture changes |
-| **Nested Access** | Dot notation: `config.model.lr` instead of `config['model']['lr']` |
-| **Format Agnostic** | Load/save JSON, YAML, TOML, XYZ |
-| **Safe Updates** | `update_if_absent()` → merge without overwrites |
-| **Auto-nested** | `ADict.auto()` → `config.a.b.c = 1` just works |
-
-### Examples
-
-#### Structural Hashing
+### Structural Hashing: Track Architecture Changes
 
 ```python
 from ato.adict import ADict
@@ -243,56 +124,94 @@ config3 = ADict(lr=0.1, epochs='100', model='resnet50')
 print(config1.get_structural_hash() == config3.get_structural_hash())  # False
 ```
 
-**Why this matters:**
-When results differ, you need to know if the experiment **architecture** changed or just the values.
+**Why this matters:** When results differ, you need to know if the experiment **architecture** changed or just the values.
 
-#### Auto-nested Configs
-
-```python
-# ❌ Traditional way
-config = ADict()
-config.model = ADict()
-config.model.backbone = ADict()
-config.model.backbone.layers = [64, 128, 256]
-
-# ✅ With ADict.auto()
-config = ADict.auto()
-config.model.backbone.layers = [64, 128, 256]  # Just works!
-```
-
-#### Format Agnostic
+### Code Fingerprinting: Track Logic Changes
 
 ```python
-# Load/save any format
-config = ADict.from_file('config.json')
-config.dump('config.yaml')
-
-# Safe updates
-config.update_if_absent(lr=0.01, scheduler='cosine')  # Only adds scheduler
+@scope.trace(trace_id='train_step')
+@scope
+def train_epoch(config):
+    loss = compute_loss(model, data)
+    return loss
 ```
+
+Generates SHA256 of function bytecode. Ignores:
+- Comments
+- Whitespace
+- Variable names
+- Function names
+
+Detects:
+- Logic changes
+- Algorithm modifications
+- Control flow changes
+
+### Runtime Fingerprinting: Catch Silent Failures
+
+```python
+import numpy as np
+
+@scope.runtime_trace(
+    trace_id='predictions',
+    init_fn=lambda: np.random.seed(42),  # Fix randomness
+    inspect_fn=lambda preds: preds[:100]  # Track first 100 only
+)
+@scope
+def evaluate(model, data):
+    return model.predict(data)
+```
+
+Generates SHA256 of actual outputs. Catches:
+- Non-determinism
+- Silent failures (code unchanged, output wrong)
+- Dependency drift
+
+**The key insight:** Scope already tracks **how** config was built. Adding code/runtime fingerprints just extends that reasoning to code and outputs.
 
 ---
 
-## Scope: Config Reasoning
+## Table of Contents
+
+- [Core Concepts](#core-concepts)
+  - [Scope: Config Reasoning](#scope-config-reasoning)
+  - [ADict: Structural Awareness](#adict-structural-awareness)
+  - [Priority-Based Merging](#priority-based-merging)
+  - [Config Chaining](#config-chaining)
+  - [Lazy Evaluation](#lazy-evaluation)
+  - [MultiScope: Namespace Isolation](#multiscope-namespace-isolation)
+- [Fingerprinting & Reproducibility](#fingerprinting--reproducibility)
+  - [Static Tracing (Code)](#static-tracing-code)
+  - [Runtime Tracing (Outputs)](#runtime-tracing-outputs)
+- [SQL Tracker: Local Experiment Tracking](#sql-tracker-local-experiment-tracking)
+- [Hyperparameter Optimization](#hyperparameter-optimization)
+- [Works With Your Stack](#works-with-your-stack)
+- [When to Use Ato](#when-to-use-ato)
+- [Non-Goals](#non-goals)
+- [FAQ](#faq)
+- [Best Practices](#best-practices)
+- [Quality Signals](#quality-signals)
+
+---
+
+## Core Concepts
+
+### Scope: Config Reasoning
 
 Scope manages configuration through **priority-based merging** with **full reasoning**.
 
-**Config is not logging — it's reasoning.**
-Scope makes merge order, priority, and causality visible.
-
-### Priority-based Merging
-
+**Priority chain:**
 ```
-Default Configs (priority=0)
+Default Views (priority=0)
     ↓
-Named Configs (priority=0+)
+Named Views (priority=0+)
     ↓
 CLI Arguments (highest priority)
     ↓
-Lazy Configs (computed after CLI)
+Lazy Views (computed after CLI)
 ```
 
-#### Example
+#### Example: Priority-Based Merging
 
 ```python
 from ato.scope import Scope
@@ -311,17 +230,80 @@ def high_lr(config):
 @scope.observe(priority=2)  # Applied last
 def long_training(config):
     config.epochs = 300
+
+@scope
+def train(config):
+    print(f"LR: {config.lr}, Epochs: {config.epochs}")
+
+if __name__ == '__main__':
+    train()
 ```
 
 ```bash
 python train.py                           # lr=0.001, epochs=100
 python train.py high_lr                   # lr=0.01, epochs=100
 python train.py high_lr long_training     # lr=0.01, epochs=300
+python train.py lr=0.1                    # lr=0.1, epochs=100 (CLI wins)
 ```
+
+### ADict: Structural Awareness
+
+`ADict` is not just a dict. It's a **structure-aware config** with:
+
+**Structural hashing:**
+```python
+config1 = ADict(lr=0.1, epochs=100)
+config2 = ADict(lr=0.01, epochs=200)
+# Same structure → same hash (tracks architecture, not values)
+```
+
+**Nested access:**
+```python
+config.model.backbone.layers = [64, 128, 256]  # Just works
+```
+
+**Access tracking:**
+```python
+config = ADict(lr=0.1, epochs=100, unused_key=999)
+_ = config.lr
+minimal = config.get_minimal_config()  # Only {lr: 0.1}
+```
+
+**Freeze/defrost:**
+```python
+config.freeze()    # Read-only mode
+config.defrost()   # Editable mode
+```
+
+**Format agnostic:**
+```python
+config = ADict.from_file('config.yaml')
+config.dump('config.json')
+```
+
+### Priority-Based Merging
+
+Views are applied in **priority order** (lowest first):
+
+```python
+@scope.observe(priority=-1)  # Applied first
+def base(config):
+    config.lr = 0.001
+
+@scope.observe(priority=0)   # Applied second
+def mid(config):
+    config.lr = 0.01
+
+@scope.observe(priority=1)   # Applied last
+def high(config):
+    config.lr = 0.1
+```
+
+CLI args always have **highest priority**.
 
 ### Config Chaining
 
-Chain configs with dependencies:
+Chain views with dependencies:
 
 ```python
 @scope.observe()
@@ -346,9 +328,14 @@ python train.py advanced_training
 # Results in: base_setup → advanced_training
 ```
 
+**Why this matters:**
+- Explicit dependencies (no more forgetting prerequisites)
+- Composable configs (build complex from simple)
+- Prevents errors (can't use config without dependencies)
+
 ### Lazy Evaluation
 
-**Note:** Lazy evaluation requires Python 3.8 or higher.
+**Note:** Requires Python 3.8+
 
 Compute configs **after** CLI args are applied:
 
@@ -389,9 +376,7 @@ def my_config(config):
 
 ### MultiScope: Namespace Isolation
 
-Manage completely separate configuration namespaces with independent priority systems.
-
-**Use case:** Different teams own different scopes without key collisions.
+Manage completely separate configuration namespaces:
 
 ```python
 from ato.scope import Scope, MultiScope
@@ -412,38 +397,30 @@ def data_config(data):
 
 @scope
 def train(model, data):  # Named parameters match scope names
-    # Both have 'lr' but in separate namespaces!
     print(f"Model LR: {model.lr}, Data LR: {data.lr}")
 ```
 
 **Key advantage:** `model.lr` and `data.lr` are completely independent. No naming prefixes needed.
 
-**CLI with MultiScope:**
-
+**CLI:**
 ```bash
-# Override model scope only
-python train.py model.backbone=%resnet101%
-
-# Override both
 python train.py model.backbone=%resnet101% data.dataset=%imagenet%
 ```
 
 ### Config Documentation & Debugging
 
-**The `manual` command** visualizes the exact order of configuration application.
+**The `manual` command** shows exact view application order:
 
 ```python
 @scope.observe(default=True)
 def config(config):
     config.lr = 0.001
     config.batch_size = 32
-    config.model = 'resnet50'
 
 @scope.manual
-def config_docs(config):
-    config.lr = 'Learning rate for optimizer'
-    config.batch_size = 'Number of samples per batch'
-    config.model = 'Model architecture (resnet50, resnet101, etc.)'
+def docs(manual):
+    manual.lr = 'Learning rate for optimizer'
+    manual.batch_size = 'Number of samples per batch'
 ```
 
 ```bash
@@ -460,12 +437,8 @@ config → (CLI Inputs)
 (User Manuals)
 lr: Learning rate for optimizer
 batch_size: Number of samples per batch
-model: Model architecture (resnet50, resnet101, etc.)
 --------------------------------------------------
 ```
-
-**Why this matters:**
-When debugging "why is this config value not what I expect?", you see **exactly** which function set it and in what order.
 
 **Complex example:**
 
@@ -488,21 +461,21 @@ def adaptive_lr(config):
         config.lr = config.lr * 2
 ```
 
-When you run `python train.py manual`, you see:
+Run `python train.py manual`:
 ```
 (The Applying Order of Views)
 defaults → experiment_config → another_config → (CLI Inputs) → adaptive_lr
 ```
 
-Now it's **crystal clear** why `lr=0.1` (from `another_config`) and not `0.01`!
+Now it's **crystal clear** why `lr=0.1` (from `another_config`)!
 
-### Code Fingerprinting
+---
+
+## Fingerprinting & Reproducibility
+
+### Static Tracing (Code)
 
 Track **logic changes** automatically, ignoring cosmetic edits.
-
-#### Static Tracing (`@scope.trace`)
-
-Generates a fingerprint of the function's **logic**, not its name or formatting:
 
 ```python
 # These three functions have IDENTICAL fingerprints
@@ -526,64 +499,49 @@ def completely_different_name(config):
     return loss
 ```
 
-All three produce the **same fingerprint** because the underlying logic is identical.
+All three produce the **same fingerprint** because the logic is identical.
 
 **When fingerprints change:**
 
 ```python
 @scope.trace(trace_id='train_step')
 @scope
-def train_v1(config):
-    loss = model(data)
-    return loss
-
-@scope.trace(trace_id='train_step')
-@scope
-def train_v2(config):
+def train_v3(config):
     loss = model(data) * 2  # ← Logic changed!
     return loss
 ```
 
-Now fingerprints differ — you've changed the actual computation.
+Now fingerprints differ.
 
 **Example: Catching refactoring bugs**
 
 ```python
-# Original implementation
-@scope.trace(trace_id='forward_pass')
+# Original
+@scope.trace(trace_id='forward')
 @scope
 def forward(model, x):
     out = model(x)
     return out
 
-# Safe refactoring: Added comments, changed variable name, different whitespace
-@scope.trace(trace_id='forward_pass')
+# Safe refactoring: same fingerprint
+@scope.trace(trace_id='forward')
 @scope
 def forward(model,x):
-    # Forward pass through model
-    result=model(x)  # No spaces
+    result=model(x)  # Same logic, different style
     return result
-```
 
-These have **the same fingerprint** because the underlying logic is identical — only cosmetic changes.
-
-```python
-# Unsafe refactoring: Logic changed
-@scope.trace(trace_id='forward_pass')
+# Unsafe refactoring: different fingerprint
+@scope.trace(trace_id='forward')
 @scope
 def forward(model, x):
-    features = model.backbone(x)  # Now calling backbone + head separately!
+    features = model.backbone(x)  # Logic changed!
     logits = model.head(features)
     return logits
 ```
 
-This has a **different fingerprint** — the logic changed. If you expected them to be equivalent but they have different fingerprints, you've caught a refactoring bug.
-
-### Runtime Fingerprinting
+### Runtime Tracing (Outputs)
 
 Track what the function **produces**, not what it does.
-
-#### Runtime Tracing (`@scope.runtime_trace`)
 
 ```python
 import numpy as np
@@ -603,19 +561,19 @@ def evaluate(model, data):
 def evaluate_with_dropout(model, data):
     return model.predict(data)  # Now deterministic
 
-# With inspect_fn: Track specific parts of output
+# With inspect_fn: Track specific parts
 @scope.runtime_trace(
     trace_id='predictions',
-    inspect_fn=lambda preds: preds[:100]  # Only hash first 100 predictions
+    inspect_fn=lambda preds: preds[:100]  # Only hash first 100
 )
 @scope
 def evaluate_large_output(model, data):
     return model.predict(data)
 
-# Advanced: Type-only checking (ignore values)
+# Advanced: Type-only checking
 @scope.runtime_trace(
     trace_id='predictions',
-    inspect_fn=lambda preds: type(preds).__name__  # Track output type only
+    inspect_fn=lambda preds: type(preds).__name__  # Track type only
 )
 @scope
 def evaluate_structure(model, data):
@@ -623,29 +581,13 @@ def evaluate_structure(model, data):
 ```
 
 **Parameters:**
-- `init_fn`: Optional function called before execution (e.g., seed fixing, device setup)
-- `inspect_fn`: Optional function to extract/filter what to track (e.g., first N items, specific fields, types only)
+- `init_fn`: Called before execution (seed fixing, device setup)
+- `inspect_fn`: Extract/filter what to track (first N items, specific fields, types only)
 
-Even if code hasn't changed, if predictions differ, the runtime fingerprint changes.
-
-#### When to Use Each
-
-**Use `@scope.trace()` when:**
-- You want to track code changes automatically
-- You're refactoring and want to isolate performance impact
-- You need to audit "which code produced this result?"
-- You want to ignore cosmetic changes (comments, whitespace, renaming)
-
-**Use `@scope.runtime_trace()` when:**
-- You want to detect **silent failures** (code unchanged, output wrong)
-- You're debugging non-determinism
-- You need to verify model behavior across versions
-- You care about what the function produces, not how it's written
-
-**Use both when:**
-- Building production ML systems
-- Running long-term research experiments
-- Multiple people modifying the same codebase
+**When to use:**
+- **Static tracing** (`@scope.trace`): Track code changes, ignore cosmetic edits
+- **Runtime tracing** (`@scope.runtime_trace`): Detect silent failures, debug non-determinism
+- **Both**: Production ML systems, long-term experiments, multi-person teams
 
 ---
 
@@ -656,24 +598,10 @@ Lightweight experiment tracking using SQLite.
 ### Why SQL Tracker?
 
 - **Zero Setup**: Just a SQLite file, no servers
-- **Full History**: Track all runs, metrics, and artifacts
+- **Full History**: Track all runs, metrics, artifacts
 - **Smart Search**: Find similar experiments by config structure
 - **Code Versioning**: Track code changes via fingerprints
 - **Offline-first**: No network required
-
-### Database Schema
-
-```
-Project (my_ml_project)
-├── Experiment (run_1)
-│   ├── config: {...}
-│   ├── structural_hash: "abc123..."
-│   ├── Metrics: [loss, accuracy, ...]
-│   ├── Artifacts: [model.pt, plots/*, ...]
-│   └── Fingerprints: [model_forward, train_step, ...]
-├── Experiment (run_2)
-└── ...
-```
 
 ### Usage
 
@@ -683,40 +611,27 @@ Project (my_ml_project)
 from ato.db_routers.sql.manager import SQLLogger
 from ato.adict import ADict
 
-# Setup config
 config = ADict(
     experiment=ADict(
         project_name='image_classification',
         sql=ADict(db_path='sqlite:///experiments.db')
     ),
-    # Your hyperparameters
     lr=0.001,
     batch_size=32,
     model='resnet50'
 )
 
-# Create logger
 logger = SQLLogger(config)
+run_id = logger.run(tags=['baseline', 'resnet50'])
 
-# Start experiment run
-run_id = logger.run(tags=['baseline', 'resnet50', 'cifar10'])
-
-# Training loop
 for epoch in range(100):
-    # Your training code
     train_loss = train_one_epoch()
     val_acc = validate()
 
-    # Log metrics
     logger.log_metric('train_loss', train_loss, step=epoch)
     logger.log_metric('val_accuracy', val_acc, step=epoch)
 
-# Log artifacts
-logger.log_artifact(run_id, 'checkpoints/model_best.pt',
-                   data_type='model',
-                   metadata={'epoch': best_epoch})
-
-# Finish run
+logger.log_artifact(run_id, 'checkpoints/model_best.pt', data_type='model')
 logger.finish(status='completed')
 ```
 
@@ -727,51 +642,28 @@ from ato.db_routers.sql.manager import SQLFinder
 
 finder = SQLFinder(config)
 
-# Get all runs in project
+# Get all runs
 runs = finder.get_runs_in_project('image_classification')
-for run in runs:
-    print(f"Run {run.id}: {run.config.model} - {run.status}")
 
-# Find best performing run
+# Find best run
 best_run = finder.find_best_run(
     project_name='image_classification',
     metric_key='val_accuracy',
-    mode='max'  # or 'min' for loss
+    mode='max'
 )
-print(f"Best config: {best_run.config}")
 
 # Find similar experiments (same config structure)
 similar = finder.find_similar_runs(run_id=123)
-print(f"Found {len(similar)} runs with similar config structure")
 
 # Trace statistics (code fingerprints)
 stats = finder.get_trace_statistics('image_classification', trace_id='model_forward')
-print(f"Model forward pass has {stats['static_trace_versions']} versions")
 ```
-
-### Features
-
-| Feature | Description |
-|---------|-------------|
-| **Structural Hash** | Auto-track config structure changes |
-| **Metric Logging** | Time-series metrics with step tracking |
-| **Artifact Management** | Track model checkpoints, plots, data files |
-| **Fingerprint Tracking** | Version control for code (static & runtime) |
-| **Smart Search** | Find similar configs, best runs, statistics |
 
 ---
 
 ## Hyperparameter Optimization
 
-Built-in **Hyperband** algorithm for efficient hyperparameter search with early stopping.
-
-### How Hyperband Works
-
-Hyperband uses successive halving:
-1. Start with many configs, train briefly
-2. Keep top performers, discard poor ones
-3. Train survivors longer
-4. Repeat until one winner remains
+Built-in **Hyperband** algorithm with successive halving.
 
 ### Basic Usage
 
@@ -782,13 +674,12 @@ from ato.scope import Scope
 
 scope = Scope()
 
-# Define search space
 search_spaces = ADict(
     lr=ADict(
         param_type='FLOAT',
         param_range=(1e-5, 1e-1),
         num_samples=20,
-        space_type='LOG'  # Logarithmic spacing
+        space_type='LOG'
     ),
     batch_size=ADict(
         param_type='INTEGER',
@@ -802,185 +693,77 @@ search_spaces = ADict(
     )
 )
 
-# Create Hyperband optimizer
 hyperband = HyperBand(
     scope,
     search_spaces,
-    halving_rate=0.3,      # Keep top 30% each round
-    num_min_samples=3,     # Stop when <= 3 configs remain
-    mode='max'             # Maximize metric (use 'min' for loss)
+    halving_rate=0.3,
+    num_min_samples=3,
+    mode='max'
 )
 
 @hyperband.main
 def train(config):
-    # Your training code
     model = create_model(config.model)
     optimizer = Adam(lr=config.lr)
-
-    # Use __num_halved__ for early stopping
-    num_epochs = compute_epochs(config.__num_halved__)
-
-    # Train and return metric
-    val_acc = train_and_evaluate(model, optimizer, num_epochs)
+    val_acc = train_and_evaluate(model, optimizer)
     return val_acc
 
 if __name__ == '__main__':
-    # Run hyperparameter search
     best_result = train()
     print(f"Best config: {best_result.config}")
     print(f"Best metric: {best_result.metric}")
 ```
 
-### Parameter Types
+---
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `FLOAT` | Continuous values | Learning rate, dropout |
-| `INTEGER` | Discrete integers | Batch size, num layers |
-| `CATEGORY` | Categorical choices | Model type, optimizer |
+## Works With Your Stack
 
-Space types:
-- `LOG`: Logarithmic spacing (good for learning rates)
-- `LINEAR`: Linear spacing (default)
+Ato doesn't compete with your config system or tracking platform.
+It **observes and fingerprints** what you already use.
 
-### Distributed Search
+**Compose configs however you like:**
+- Load Hydra/OmegaConf → Ato fingerprints the merged structure
+- Use argparse → Ato observes and integrates
+- Import OpenMMLab configs → Ato handles `_base_` inheritance
+- Mix YAML/JSON/TOML → Ato is format-agnostic
 
-```python
-from ato.hyperopt.hyperband import DistributedHyperBand
-import torch.distributed as dist
+**Track experiments however you like:**
+- Log to MLflow/W&B → Ato tracks causality in local SQLite
+- Use both together → Cloud for metrics, Ato for "why did this change?"
+- Or just Ato → Zero-setup local tracking
 
-# Initialize distributed training
-dist.init_process_group(backend='nccl')
-rank = dist.get_rank()
-world_size = dist.get_world_size()
-
-# Create distributed hyperband
-hyperband = DistributedHyperBand(
-    scope,
-    search_spaces,
-    halving_rate=0.3,
-    num_min_samples=3,
-    mode='max',
-    rank=rank,
-    world_size=world_size,
-    backend='pytorch'
-)
-
-@hyperband.main
-def train(config):
-    # Your distributed training code
-    model = create_model(config)
-    model = DDP(model, device_ids=[rank])
-    metric = train_and_evaluate(model)
-    return metric
-
-if __name__ == '__main__':
-    result = train()
-    if rank == 0:
-        print(f"Best config: {result.config}")
-```
+**Ato is a complement, not a replacement.**
+No migration required. No lock-in. Add it incrementally.
 
 ---
 
-## Best Practices
+## When to Use Ato
 
-### 1. Project Structure
+Use Ato when:
 
-```
-my_project/
-├── configs/
-│   ├── default.py       # Default config with @scope.observe(default=True)
-│   ├── models.py        # Model-specific configs
-│   └── datasets.py      # Dataset configs
-├── train.py             # Main training script
-├── experiments.db       # SQLite experiment tracking
-└── experiments/
-    ├── run_001/
-    │   ├── checkpoints/
-    │   └── logs/
-    └── run_002/
-```
+- **Config merge order matters** and you need to trace causality
+- **Multiple people modify configs** and you need to see who set what and why
+- **CLI-driven workflows** are easier than editing YAML files
+- **Experiments diverge occasionally** and you need to narrow down the cause
+- **"I didn't change code but results differ"** happens repeatedly
 
-### 2. Config Organization
+**Ato is for config reasoning, not compliance.**
+If you need audit trails or dashboards, keep using your existing tracking platform.
 
-```python
-# configs/default.py
-from ato.scope import Scope
-from ato.adict import ADict
+---
 
-scope = Scope()
+## Non-Goals
 
-@scope.observe(default=True)
-def defaults(config):
-    # Data
-    config.data = ADict(
-        dataset='cifar10',
-        batch_size=32,
-        num_workers=4
-    )
+Ato is **not**:
 
-    # Model
-    config.model = ADict(
-        backbone='resnet50',
-        pretrained=True
-    )
+- A pipeline orchestrator (use Airflow, Prefect, Luigi)
+- A hyperparameter scheduler (use Optuna, Ray Tune)
+- A model registry (use MLflow Model Registry)
+- An experiment dashboard (use MLflow, W&B, TensorBoard)
+- A dataset versioner (use DVC, Pachyderm)
 
-    # Training
-    config.train = ADict(
-        lr=0.001,
-        epochs=100,
-        optimizer='adam'
-    )
-
-    # Experiment tracking
-    config.experiment = ADict(
-        project_name='my_project',
-        sql=ADict(db_path='sqlite:///experiments.db')
-    )
-```
-
-### 3. Combined Workflow
-
-```python
-from ato.scope import Scope
-from ato.db_routers.sql.manager import SQLLogger
-from configs.default import scope
-
-@scope
-def train(config):
-    # Setup experiment tracking
-    logger = SQLLogger(config)
-    run_id = logger.run(tags=[config.model.backbone, config.data.dataset])
-
-    try:
-        # Training loop
-        for epoch in range(config.train.epochs):
-            loss = train_epoch()
-            acc = validate()
-
-            logger.log_metric('loss', loss, epoch)
-            logger.log_metric('accuracy', acc, epoch)
-
-        logger.finish(status='completed')
-
-    except Exception as e:
-        logger.finish(status='failed')
-        raise e
-
-if __name__ == '__main__':
-    train()
-```
-
-### 4. Reproducibility Checklist
-
-- ✅ Use structural hashing to track config changes
-- ✅ Log all hyperparameters to SQLLogger
-- ✅ Tag experiments with meaningful labels
-- ✅ Track artifacts (checkpoints, plots)
-- ✅ Use lazy configs for derived parameters
-- ✅ Document configs with `@scope.manual`
-- ✅ Add code fingerprinting to key functions
-- ✅ Add runtime fingerprinting to critical outputs
+**Ato has one job:** Make config reasoning visible and reproducible.
+Everything else belongs in specialized tools.
 
 ---
 
@@ -1030,14 +813,85 @@ Python codebase is ~10 files — small, readable, auditable.
 
 Minimal:
 - Config fingerprinting: microseconds
-- Code fingerprinting: happens once at decoration time
+- Code fingerprinting: once at decoration time
 - Runtime fingerprinting: depends on `inspect_fn` complexity
 - SQLite logging: milliseconds per metric
 
-### Can I self-host?
+---
 
-Ato runs entirely locally. There's nothing to host.
-If you need centralized tracking, use MLflow/W&B alongside Ato.
+## Best Practices
+
+### 1. Project Structure
+
+```
+my_project/
+├── configs/
+│   ├── default.py       # Default views
+│   ├── models.py        # Model-specific views
+│   └── datasets.py      # Dataset views
+├── train.py             # Main training script
+├── experiments.db       # SQLite tracking
+└── experiments/
+    └── run_001/
+```
+
+### 2. Config Organization
+
+```python
+# configs/default.py
+from ato.scope import Scope
+from ato.adict import ADict
+
+scope = Scope()
+
+@scope.observe(default=True)
+def defaults(config):
+    config.data = ADict(dataset='cifar10', batch_size=32)
+    config.model = ADict(backbone='resnet50', pretrained=True)
+    config.train = ADict(lr=0.001, epochs=100)
+    config.experiment = ADict(
+        project_name='my_project',
+        sql=ADict(db_path='sqlite:///experiments.db')
+    )
+```
+
+### 3. Combined Workflow
+
+```python
+from ato.scope import Scope
+from ato.db_routers.sql.manager import SQLLogger
+from configs.default import scope
+
+@scope
+def train(config):
+    logger = SQLLogger(config)
+    run_id = logger.run(tags=[config.model.backbone, config.data.dataset])
+
+    try:
+        for epoch in range(config.train.epochs):
+            loss = train_epoch()
+            acc = validate()
+            logger.log_metric('loss', loss, epoch)
+            logger.log_metric('accuracy', acc, epoch)
+        logger.finish(status='completed')
+    except Exception as e:
+        logger.finish(status='failed')
+        raise e
+
+if __name__ == '__main__':
+    train()
+```
+
+### 4. Reproducibility Checklist
+
+- ✅ Use structural hashing to track config changes
+- ✅ Log all hyperparameters to SQLLogger
+- ✅ Tag experiments with meaningful labels
+- ✅ Track artifacts (checkpoints, plots)
+- ✅ Use lazy configs for derived parameters
+- ✅ Document configs with `@scope.manual`
+- ✅ Add code fingerprinting to key functions
+- ✅ Add runtime fingerprinting to critical outputs
 
 ---
 
@@ -1046,15 +900,11 @@ If you need centralized tracking, use MLflow/W&B alongside Ato.
 **Every release passes 100+ unit tests.**
 No unchecked code. No silent failure.
 
-This isn't a feature. It's a commitment.
-
 When you fingerprint experiments, you're trusting the fingerprints are correct.
 When you merge configs, you're trusting the merge order is deterministic.
 When you trace code, you're trusting the bytecode hashing is stable.
 
 Ato has zero tolerance for regressions.
-
-Tests cover every module — ADict, Scope, MultiScope, SQLTracker, HyperBand — and every edge case we've encountered in production use.
 
 ```bash
 python -m pytest unit_tests/  # Run locally. Always passes.
@@ -1069,7 +919,7 @@ Small, readable, auditable. No magic, no metaprogramming.
 
 ## Requirements
 
-- Python >= 3.7 (Python >= 3.8 required for lazy evaluation features)
+- Python >= 3.7 (Python >= 3.8 required for lazy evaluation)
 - SQLAlchemy (for SQL Tracker)
 - PyYAML, toml (for config serialization)
 
@@ -1079,7 +929,7 @@ See `pyproject.toml` for full dependencies.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+Contributions are welcome! Submit issues or pull requests.
 
 ### Development Setup
 
@@ -1100,7 +950,3 @@ python -m pytest unit_tests/
 ## License
 
 MIT License
-
----
-
-※ I used claude only for generating some missing test codes and README.
