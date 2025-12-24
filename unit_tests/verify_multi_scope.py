@@ -22,7 +22,7 @@ class MultiScopeTest(unittest.TestCase):
             config_2.lr = 1.0
 
     def test_cli_isolation(self):
-        sys.argv = 't.py config_1.text=%X% config_2.lr=3.14'.split()
+        sys.argv = ['t.py', 'config_1.text:=X', 'config_2.lr=3.14']
 
         @self.multi_scope
         def main(config_1, config_2):

@@ -64,13 +64,13 @@ class ScopeUnitTest(unittest.TestCase):
         def test_view(unit_test_config):
             unit_test_config.learning_rate = 0.05
 
-        sys.argv = (
-            'test.py '
-            'batch_size=1024 '
-            'num_layers=[1, 4, [1, 2, 3]] '
-            'test_view '
-            'prompt=%Elsa is doing magic.% '
-        ).split()
+        sys.argv = [
+            'test.py',
+            'batch_size=1024',
+            'num_layers=[1, 4, [1, 2, 3]]',
+            'test_view',
+            'prompt:="Elsa is doing magic."',
+        ]
         parse_args_pythonic()
         self.scope.apply()
         self.assertEqual(self.config.learning_rate, 0.05)
@@ -107,7 +107,7 @@ class ScopeUnitTest(unittest.TestCase):
                 else:
                     unit_test_config.batch_size = 1024
 
-        sys.argv = 'test.py learning_rate=0.1 test_view prompt=%Elsa is doing magic.% eps=[1, 2] factor=2'.split()
+        sys.argv = ['test.py', 'learning_rate=0.1', 'test_view', 'prompt:="Elsa is doing magic."', 'eps=[1, 2]', 'factor=2']
         parse_args_pythonic()
         self.scope.apply()
         self.assertEqual(self.config.learning_rate, 0.1)
@@ -128,7 +128,7 @@ class ScopeUnitTest(unittest.TestCase):
                 else:
                     unit_test_config.batch_size = 1024
 
-        sys.argv = 'test.py learning_rate=0.1 test_view prompt=%Elsa is doing magic.% eps=[1, 2] factor=2'.split()
+        sys.argv = ['test.py', 'learning_rate=0.1', 'test_view', 'prompt:="Elsa is doing magic."', 'eps=[1, 2]', 'factor=2']
         parse_args_pythonic()
         self.scope.apply()
         self.assertEqual(self.config.learning_rate, 0.1)
@@ -189,7 +189,7 @@ class ScopeUnitTest(unittest.TestCase):
         def test_chained_chained_view(unit_test_config):
             pass
 
-        sys.argv = 'test.py test_chained_chained_view learning_rate=0.1 factor=2 model_name=%resnet%'.split()
+        sys.argv = ['test.py', 'test_chained_chained_view', 'learning_rate=0.1', 'factor=2', 'model_name:=resnet']
         parse_args_pythonic()
         self.scope.apply()
         self.assertEqual(self.config.learning_rate, 0.2)

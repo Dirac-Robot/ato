@@ -357,7 +357,7 @@ def computed_config(config):
 ```
 
 ```bash
-python train.py dataset=%cifar10% computed_config
+python train.py dataset:=cifar10 computed_config
 # Results in: num_classes=10, image_size=32
 ```
 
@@ -404,7 +404,7 @@ def train(model, data):  # Named parameters match scope names
 
 **CLI:**
 ```bash
-python train.py model.backbone=%resnet101% data.dataset=%imagenet%
+python train.py model.backbone:=resnet101 data.dataset:=imagenet
 ```
 
 ### Config Documentation & Debugging

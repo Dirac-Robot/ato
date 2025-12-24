@@ -31,14 +31,14 @@ def parse_args_pythonic():
     _pythonic_vars = parse_command(joined)
     pythonic_vars = []
     for literal in _pythonic_vars:
-        if '=' not in literal:
+        if ':=' in literal:
+            name, value = literal.split(':=', 1)
+            escaped = value.replace('\\', '\\\\').replace("'", "\\'")
+            pythonic_vars.append(f"{name}='{escaped}'")
+        elif '=' not in literal:
             pythonic_vars.extend(literal.split())
         else:
-            name, *values = literal.split('=')
-            value = '='.join(values)
-            if value.startswith('%') and value.endswith('%'):
-                value = f'"{value[1:-1]}"'.replace('%', '\"')
-            pythonic_vars.append(f'{name}={value}')
+            pythonic_vars.append(literal)
     default_prefix = ''
     if len(Scope.registry) == 1:
         scope_name = list(Scope.registry.keys())[0]
@@ -509,7 +509,6 @@ class MultiScope:
 
     def __call__(self, func):
         def decorator(*args, **kwargs):
-            # if not Scope.parsed:
             parse_args_pythonic()
             arguments = inspect.getfullargspec(func)
             name_spaces = set(arguments.args+arguments.kwonlyargs)
