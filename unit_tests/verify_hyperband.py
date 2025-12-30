@@ -58,14 +58,10 @@ class TestHyperBand(unittest.TestCase):
 class TestDistributedHyperBand(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        """Set up distributed environment for all tests."""
         cls.rank = int(os.environ.get('RANK', '0'))
         cls.local_rank = int(os.environ.get('LOCAL_RANK', '0'))
         cls.world_size = int(os.environ.get('WORLD_SIZE', '1'))
-
-        # Only initialize distributed if CUDA is available and world_size > 1
         cls.distributed_available = torch.cuda.is_available() and cls.world_size > 1
-
         if cls.distributed_available:
             torch.cuda.set_device(cls.local_rank)
             dist.init_process_group(

@@ -174,13 +174,24 @@ class ADict(Dict):
             value = dcp(value)
         return value
 
+    def _convert_value(self, value):
+        '''Recursively convert Mapping (dict) to ADict.'''
+        if isinstance(value, self.__class__):
+            return value
+        elif isinstance(value, Mapping):
+            converted = self.__class__()
+            for k, v in value.items():
+                converted._data[k] = self._convert_value(v)
+            return converted
+        elif isinstance(value, (list, tuple)):
+            return type(value)(self._convert_value(item) for item in value)
+        else:
+            return value
+
     def __setitem__(self, names, values):
         if not self.frozen:
             if isinstance(names, str):
-                if isinstance(values, Mapping):
-                    values = self.__class__(**values)
-                elif isinstance(values, (list, tuple)):
-                    values = [self.__class__(**value) if isinstance(value, Mapping) else value for value in values]
+                values = self._convert_value(values)
                 super().__setitem__(names, values)
             elif isinstance(values, (list, tuple)):
                 for name, value in zip(names, values):

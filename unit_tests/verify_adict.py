@@ -210,5 +210,156 @@ class ADictUnitTest(unittest.TestCase):
         adict_converted['aa'] = ADict(bb=ADict(ee='ll'))
 
 
-if __name__ == "__main__":
+class RecursiveADictConversionTest(unittest.TestCase):
+    '''Strict unit tests for recursive dict to ADict conversion in __setitem__.'''
+
+    def test_single_level_dict_conversion(self):
+        '''Single level dict should be converted to ADict.'''
+        config = ADict()
+        config.data = {'key': 'value'}
+        self.assertIsInstance(config.data, ADict)
+        self.assertEqual(config.data.key, 'value')
+
+    def test_nested_dict_conversion(self):
+        '''Nested dicts should be recursively converted to ADict.'''
+        config = ADict()
+        config.data = {'level1': {'level2': {'level3': 'value'}}}
+        self.assertIsInstance(config.data, ADict)
+        self.assertIsInstance(config.data.level1, ADict)
+        self.assertIsInstance(config.data.level1.level2, ADict)
+        self.assertEqual(config.data.level1.level2.level3, 'value')
+
+    def test_deeply_nested_conversion(self):
+        '''Very deeply nested dicts should all be converted.'''
+        config = ADict()
+        config.deep = {'a': {'b': {'c': {'d': {'e': {'f': 'bottom'}}}}}}
+        self.assertIsInstance(config.deep, ADict)
+        self.assertIsInstance(config.deep.a, ADict)
+        self.assertIsInstance(config.deep.a.b, ADict)
+        self.assertIsInstance(config.deep.a.b.c, ADict)
+        self.assertIsInstance(config.deep.a.b.c.d, ADict)
+        self.assertIsInstance(config.deep.a.b.c.d.e, ADict)
+        self.assertEqual(config.deep.a.b.c.d.e.f, 'bottom')
+
+    def test_list_of_dicts_conversion(self):
+        '''Dicts inside lists should be converted to ADict.'''
+        config = ADict()
+        config.entries = [{'name': 'item1'}, {'name': 'item2'}]
+        self.assertIsInstance(config.entries, list)
+        self.assertIsInstance(config.entries[0], ADict)
+        self.assertIsInstance(config.entries[1], ADict)
+        self.assertEqual(config.entries[0].name, 'item1')
+        self.assertEqual(config.entries[1].name, 'item2')
+
+    def test_tuple_of_dicts_conversion(self):
+        '''Dicts inside tuples should be converted to ADict and remain tuple.'''
+        config = ADict()
+        config.entries = ({'name': 'item1'}, {'name': 'item2'})
+        self.assertIsInstance(config.entries, tuple)
+        self.assertIsInstance(config.entries[0], ADict)
+        self.assertIsInstance(config.entries[1], ADict)
+
+    def test_nested_list_of_dicts_conversion(self):
+        '''Nested dicts inside lists should also be converted.'''
+        config = ADict()
+        config.data = [{'nested': {'value': 42}}]
+        self.assertIsInstance(config.data[0], ADict)
+        self.assertIsInstance(config.data[0].nested, ADict)
+        self.assertEqual(config.data[0].nested.value, 42)
+
+    def test_mixed_types_in_list(self):
+        '''Mixed types in list: only dicts should be converted.'''
+        config = ADict()
+        config.mixed = [{'a': 1}, 'string', 123, None, [{'b': 2}]]
+        self.assertIsInstance(config.mixed[0], ADict)
+        self.assertEqual(config.mixed[1], 'string')
+        self.assertEqual(config.mixed[2], 123)
+        self.assertIsNone(config.mixed[3])
+        self.assertIsInstance(config.mixed[4], list)
+        self.assertIsInstance(config.mixed[4][0], ADict)
+        self.assertEqual(config.mixed[4][0].b, 2)
+
+    def test_setitem_with_bracket_notation(self):
+        '''Bracket notation setitem should also recursively convert.'''
+        config = ADict()
+        config['data'] = {'nested': {'deep': 'value'}}
+        self.assertIsInstance(config['data'], ADict)
+        self.assertIsInstance(config['data']['nested'], ADict)
+        self.assertEqual(config['data']['nested']['deep'], 'value')
+
+    def test_setitem_with_iterable_keys(self):
+        '''Setitem with iterable keys and dict values should convert each.'''
+        config = ADict()
+        config['a', 'b'] = [{'x': 1}, {'y': 2}]
+        self.assertIsInstance(config.a, ADict)
+        self.assertIsInstance(config.b, ADict)
+        self.assertEqual(config.a.x, 1)
+        self.assertEqual(config.b.y, 2)
+
+    def test_existing_adict_not_rewrapped(self):
+        '''Existing ADict should not be re-wrapped.'''
+        config = ADict()
+        inner = ADict(name='inner')
+        config.inner = inner
+        self.assertIs(config.inner, inner)
+
+    def test_empty_dict_conversion(self):
+        '''Empty dict should be converted to empty ADict.'''
+        config = ADict()
+        config.empty = {}
+        self.assertIsInstance(config.empty, ADict)
+        self.assertEqual(len(config.empty), 0)
+
+    def test_complex_structure(self):
+        '''Complex structure with mixed nesting.'''
+        config = ADict()
+        config.complex = {
+            'users': [
+                {'name': 'Alice', 'meta': {'score': 100}},
+                {'name': 'Bob', 'meta': {'score': 95}}
+            ],
+            'settings': {
+                'debug': True,
+                'options': {'a': 1, 'b': 2}
+            }
+        }
+        self.assertIsInstance(config.complex, ADict)
+        self.assertIsInstance(config.complex.users, list)
+        self.assertIsInstance(config.complex.users[0], ADict)
+        self.assertIsInstance(config.complex.users[0].meta, ADict)
+        self.assertEqual(config.complex.users[0].meta.score, 100)
+        self.assertIsInstance(config.complex.settings, ADict)
+        self.assertIsInstance(config.complex.settings.options, ADict)
+        self.assertTrue(config.complex.settings.debug)
+
+    def test_overwrite_with_dict_converts(self):
+        '''Overwriting an existing key with a dict should convert.'''
+        config = ADict(value=10)
+        config.value = {'nested': 'data'}
+        self.assertIsInstance(config.value, ADict)
+        self.assertEqual(config.value.nested, 'data')
+
+    def test_primitives_not_affected(self):
+        '''Primitive values should remain unchanged.'''
+        config = ADict()
+        config.string = 'hello'
+        config.number = 42
+        config.floating = 3.14
+        config.boolean = True
+        config.none = None
+        self.assertEqual(config.string, 'hello')
+        self.assertEqual(config.number, 42)
+        self.assertEqual(config.floating, 3.14)
+        self.assertTrue(config.boolean)
+        self.assertIsNone(config.none)
+
+    def test_frozen_does_not_convert_or_set(self):
+        '''Frozen ADict should not allow setitem.'''
+        config = ADict()
+        config.freeze()
+        config.data = {'should': 'not_set'}
+        self.assertNotIn('data', config)
+
+
+if __name__ == '__main__':
     unittest.main()
