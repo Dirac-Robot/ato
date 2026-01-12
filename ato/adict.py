@@ -398,35 +398,23 @@ class ADict(Dict):
             ext = os.path.splitext(path)[1].lower()
             if ext in ('.yml', '.yaml'):
                 with open(path, 'rb') as f:
-                    return cls(yaml.load(f, Loader=yaml.FullLoader))
+                    obj = yaml.load(f, Loader=yaml.FullLoader)
             elif ext == '.toml':
                 with open(path, 'r') as f:
-                    return cls(toml.load(f))
+                    obj = toml.load(f)
             elif ext == '.json':
                 with open(path, 'r') as f:
                     obj = json.load(f)
-                    if isinstance(obj, list):
-                        return [cls(item) for item in obj]
-                    else:
-                        return cls(obj)
             elif ext == '.jsonl':
                 with open(path, 'r') as f:
-                    dict_list = json.load(f)
-                    return [cls(item) for item in dict_list]
+                    obj = json.load(f)
             elif ext == '.xyz':
                 obj = xyz.load(path)
-                if isinstance(obj, list):
-                    return [cls(item) for item in obj]
-                else:
-                    return cls(obj)
             elif ext == '.py':
                 obj = cls.compile_from_file(path)
-                if isinstance(obj, list):
-                    return [cls(item) for item in obj]
-                else:
-                    return cls(obj)
             else:
                 raise ValueError(f'{ext} is not a valid file extension.')
+            return cls(_content=obj)['_content']
         else:
             raise FileNotFoundError(f'{path} does not exist.')
 

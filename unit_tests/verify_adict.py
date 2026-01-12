@@ -361,5 +361,106 @@ class RecursiveADictConversionTest(unittest.TestCase):
         self.assertNotIn('data', config)
 
 
+class FromFileConversionTest(unittest.TestCase):
+    '''Unit tests for ADict.from_file recursive conversion.'''
+
+    def setUp(self):
+        import tempfile
+        import os
+        self.temp_dir = tempfile.mkdtemp()
+        self.list_data = [
+            {'name': 'item1', 'nested': {'a': 1, 'b': 2}},
+            {'name': 'item2', 'nested': {'c': 3, 'd': 4}}
+        ]
+        self.dict_data = {'root': {'level1': {'level2': 'value'}}}
+        self.mixed_data = [
+            {'entries': [{'inner': 'deep'}]},
+            'string_item',
+            123
+        ]
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def _write_json(self, data, filename):
+        import os
+        path = os.path.join(self.temp_dir, filename)
+        with open(path, 'w') as f:
+            json.dump(data, f)
+        return path
+
+    def test_from_file_list_returns_list(self):
+        '''from_file with list JSON should return a list, not ADict.'''
+        path = self._write_json(self.list_data, 'list.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+
+    def test_from_file_list_items_are_adict(self):
+        '''List items should be converted to ADict.'''
+        path = self._write_json(self.list_data, 'list.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result[0], ADict)
+        self.assertIsInstance(result[1], ADict)
+
+    def test_from_file_nested_dicts_in_list_are_adict(self):
+        '''Nested dicts within list items should also be ADict.'''
+        path = self._write_json(self.list_data, 'list.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result[0].nested, ADict)
+        self.assertIsInstance(result[1].nested, ADict)
+        self.assertEqual(result[0].nested.a, 1)
+        self.assertEqual(result[1].nested.c, 3)
+
+    def test_from_file_dict_returns_adict(self):
+        '''from_file with dict JSON should return ADict.'''
+        path = self._write_json(self.dict_data, 'dict.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result, ADict)
+
+    def test_from_file_dict_nested_are_adict(self):
+        '''Nested dicts in dict file should be ADict.'''
+        path = self._write_json(self.dict_data, 'dict.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result.root, ADict)
+        self.assertIsInstance(result.root.level1, ADict)
+        self.assertEqual(result.root.level1.level2, 'value')
+
+    def test_from_file_mixed_list(self):
+        '''Mixed list with dicts, strings, numbers handles correctly.'''
+        path = self._write_json(self.mixed_data, 'mixed.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result, list)
+        self.assertIsInstance(result[0], ADict)
+        self.assertIsInstance(result[0].entries, list)
+        self.assertIsInstance(result[0].entries[0], ADict)
+        self.assertEqual(result[0].entries[0].inner, 'deep')
+        self.assertEqual(result[1], 'string_item')
+        self.assertEqual(result[2], 123)
+
+    def test_from_file_empty_list(self):
+        '''Empty list should return empty list.'''
+        path = self._write_json([], 'empty.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 0)
+
+    def test_from_file_empty_dict(self):
+        '''Empty dict should return empty ADict.'''
+        path = self._write_json({}, 'empty_dict.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result, ADict)
+        self.assertEqual(len(result), 0)
+
+    def test_from_file_deeply_nested_list(self):
+        '''Deeply nested structures in list should all be converted.'''
+        deep_data = [{'l1': {'l2': {'l3': {'l4': 'bottom'}}}}]
+        path = self._write_json(deep_data, 'deep.json')
+        result = ADict.from_file(path)
+        self.assertIsInstance(result[0].l1.l2.l3, ADict)
+        self.assertEqual(result[0].l1.l2.l3.l4, 'bottom')
+
+
 if __name__ == '__main__':
     unittest.main()
